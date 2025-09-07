@@ -1,0 +1,55 @@
+# ===================================================================
+# Fused .gitignore for IOC-Backend (Spring Boot + Maven)
+# Combina los defaults de Spring Initializr con buenas prácticas adicionales.
+# ===================================================================
+
+# 1. Archivos de Ayuda Generados
+HELP.md
+
+# 2. Build Output (Maven)
+# El directorio de compilación principal.
+target/
+
+# 3. Maven Wrapper
+# El JAR del wrapper es un binario que se puede descargar automáticamente.
+.mvn/wrapper/maven-wrapper.jar
+
+# 4. Archivos de Log
+# Nunca comitear logs de la aplicación.
+*.log
+
+# 5. Archivos de Configuración Local
+# Previene que se comiteen credenciales o configuraciones locales.
+application-local.properties
+
+# 6. IDE & Editor Configuration
+# STS
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+
+# VS Code
+.vscode/
+
+# 7. OS-specific Files
+# Mantener el repositorio limpio en diferentes sistemas operativos.
+.DS_Store
+Thumbs.db
