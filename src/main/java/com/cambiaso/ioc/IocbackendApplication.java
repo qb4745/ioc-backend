@@ -1,4 +1,4 @@
-package com.cambiaso.iocbackend;
+package com.cambiaso.ioc;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

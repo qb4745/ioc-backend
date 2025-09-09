@@ -1,4 +1,4 @@
-package com.cambiaso.iocbackend;
+package com.cambiaso.ioc;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
