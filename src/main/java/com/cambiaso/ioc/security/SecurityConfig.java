@@ -1,0 +1,74 @@
+package com.cambiaso.ioc.security;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
+public class SecurityConfig {
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    private String issuerUri;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                // Disable CSRF protection, as we are using stateless JWT authentication
+                .csrf(csrf -> csrf.disable())
+                // Configure CORS to allow requests from the frontend
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // Set session management to stateless
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Define authorization rules for endpoints
+                .authorizeHttpRequests(authorize -> authorize
+                        // Allow unauthenticated access to public endpoints if any (e.g., actuator health)
+                        .requestMatchers("/public/**", "/actuator/health").permitAll()
+                        // Require authentication for all other requests
+                        .anyRequest().authenticated()
+                )
+                // Configure the app as an OAuth2 Resource Server to validate JWTs
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt());
+
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Specify allowed origins (e.g., your frontend application's URL)
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        // Construct the JWK Set URI from the issuer URI
+        String jwkSetUri = this.issuerUri + "/.well-known/jwks.json";
+
+        // Create a NimbusJwtDecoder that is configured to use the ES256 algorithm
+        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
+                .jwsAlgorithm(SignatureAlgorithm.ES256)
+                .build();
+    }
+}

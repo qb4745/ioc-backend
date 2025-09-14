@@ -1,0 +1,35 @@
+    1 import { createClient } from '@supabase/supabase-js'
+    2 
+    3 // --- CONFIGURATION ---
+    4 // You can find these in your Supabase Dashboard > Project Settings > API
+    5 const supabaseUrl = 'https://bdyvzjpkycnekjrlqlfp.supabase.co'
+    6 // IMPORTANT: Use the `anon` key, NOT the `service_role` key.
+    7 const supabaseKey = 'YOUR_SUPABASE_ANON_KEY'
+    8 
+    9 // The user you created in the Supabase dashboard
+   10 const testUserEmail = 'test@example.com'
+   11 const testUserPassword = 'your-test-user-password'
+   12 // -------------------
+   13 
+   14 const supabase = createClient(supabaseUrl, supabaseKey)
+   15 
+   16 async function getJwt() {
+   17   console.log('Attempting to sign in...')
+   18   const { data, error } = await supabase.auth.signInWithPassword({
+   19     email: testUserEmail,
+   20     password: testUserPassword,
+   21   })
+   22 
+   23   if (error) {
+   24     console.error('Error logging in:', error.message)
+   25     return
+   26   }
+   27 
+   28   console.log('\n✅ Successfully logged in!')
+   29   console.log('\n--- COPY YOUR JWT ACCESS TOKEN BELOW ---')
+   30   console.log(data.session.access_token)
+   31   console.log('----------------------------------------\n')
+   32 }
+   33 
+   34 getJwt()
+
