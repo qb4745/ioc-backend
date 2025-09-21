@@ -1,115 +1,127 @@
-# **Blueprint de Implementación: TASK-INGESTA-BACK (v9 - Production Grade)**
+# Blueprint de Implementación: Ingesta Asincrónica (v3 - Refined)
 
-## 1) Objetivo
-Construir y validar un ETL dimensional gobernado, concurrente-seguro, idempotente a nivel de archivo/ventana/fila, asincrónico, transaccional y observable, con palanca operativa para UPSERT y guardas de concurrencia multi-instancia.
+## 1. Objetivo
+Este documento es la guía de implementación detallada para construir el ETL dimensional asincrónico. Cada tarea está diseñada para ser ejecutada en secuencia, construyendo la funcionalidad de manera incremental y verificable.
 
-## 2) Dependencias y configuración
-- Spring Web, Validation, WebSocket/STOMP, Data JPA, PostgreSQL Driver, Lombok, Micrometer/OTel, (opcional) MapStruct.
-- Propiedades base:
-  ```properties
-  spring.servlet.multipart.max-file-size=25MB
-  spring.servlet.multipart.max-request-size=25MB
-  app.etl.sync-mode=DELETE_INSERT  # opciones: DELETE_INSERT | UPSERT
-  app.etl.batch-size=500
-  app.etl.executor.core=2
-  app.etl.executor.max=4
-  app.etl.executor.queue=200
-  ```
+---
 
-## 3) Fases y tareas
+### **Fase 1: Cimientos - Capa de Persistencia y Entidades**
+*Objetivo: Establecer el mapeo Objeto-Relacional (ORM) y asegurar la conectividad con la base de datos.*
 
-### Fase 1: Esquema y entidades
-- **TASK-001:** Aplicar `schema.sql` v5.0 en Supabase (fact particionada, dimensiones, gobernanza, clave de negocio y índices).
-- **TASK-002:** Mapear entidades JPA (usar `@IdClass`/`@EmbeddedId` según estrategia para `fact_production`), repos y DDL de prueba.
-- **Criterios:** tablas/particiones/índices presentes; CRUD básico y constraints activas.
+*   **[ ] `TASK-INGESTA-01`:** Mapear Entidades de Dimensión y Gobernanza
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Acción:** Crear las siguientes clases de entidad JPA en el paquete `com.cambiaso.ioc.persistence.entity`:
+        *   `DimMaquina`: Mapea la tabla `dim_maquina`.
+        *   `DimMaquinista`: Mapea la tabla `dim_maquinista`.
+        *   `EtlJob`: Mapea la tabla `etl_jobs`. Usar `UUID` para `jobId`.
+        *   `QuarantinedRecord`: Mapea la tabla `quarantined_records`.
+    *   **Verificación:**
+        *   **Éxito:** La aplicación arranca y las tablas son reconocidas por Hibernate.
 
-### Fase 2: Infraestructura asíncrona y WS
-- **TASK-010:** `AsyncConfig` con `ThreadPoolTaskExecutor` dedicado y política de rechazo `CallerRuns`.
-- **TASK-011:** `WebSocketConfig` (STOMP), destinos `/topic/etl/{jobId}` y `NotificationService`.
-- **Criterios:** E2E-WSC-01 recibe `INICIADO → SINCRONIZANDO → EXITO/FALLO` bajo 10 jobs concurrentes.
+*   **[ ] `TASK-INGESTA-02`:** Mapear Entidad de Hechos con Clave Compuesta
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Dependencias:** `TASK-INGESTA-01`.
+    *   **Acción:**
+        1.  Crear una clase `@Embeddable` llamada `FactProductionId` que contenga `id` y `fechaContabilizacion`.
+        2.  Crear la entidad `FactProduction` que mapea la tabla `fact_production` y usa `@EmbeddedId` para la clave compuesta.
+    *   **Verificación:**
+        *   **Éxito:** La aplicación arranca y la relación de clave compuesta es manejada correctamente por Hibernate.
 
-### Fase 3: Gobernanza e idempotencia
-- **TASK-020:** `EtlJobService` con unicidad por `file_hash` y política de reproceso (`FALLO` o `force=true`).
-- **TASK-021:** Guard por ventana (`isWindowLocked(min,max)`) y rechazo 409 si hay solape con job activo.
-- **TASK-022 (multi-instancia):** Advisory lock PG en sincronización (`pg_try_advisory_lock(...)`).
-- **Criterios:** IT-JOBS-01 estados; IT-GUARD-01 solape retorna 409; IT-ADV-01 lock funciona entre nodos.
+*   **[ ] `TASK-INGESTA-03`:** Crear Repositorios JPA
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Dependencias:** `TASK-INGESTA-02`.
+    *   **Acción:** Crear las interfaces de Spring Data JPA correspondientes para todas las entidades en el paquete `com.cambiaso.ioc.persistence.repository`.
+    *   **Verificación:**
+        *   **Éxito:** Escribir un test de integración (`@DataJpaTest`) que guarde y recupere una entidad de cada tipo para validar el mapeo y las constraints.
 
-### Fase 4: Ingesta y validación
-- **TASK-030:** `FileValidator` (MIME/extensión/tamaño) y cálculo de `file_hash` (SHA-256).
-- **TASK-031:** `Parser` en streaming + `QuarantineService` con índices operativos.
-- **Criterios:** UNIT-PARSE-*; IT-QUAR-01 inserta y consulta por `job_id`.
+---
 
-### Fase 5: Sincronización
-- **TASK-040:** `DataSyncService.syncWithDeleteInsert(...)` transaccional con `saveAll` en batch.
-- **TASK-041:** `DataSyncService.syncWithUpsert(...)` con `JdbcTemplate` y `ON CONFLICT` (clave de negocio).
-- **Criterios:** IT-SYNC-01 rollback total ante fallo; IT-SYNC-02 re-ejecución idempotente; PERF-UPSERT-01 compara lock-time y throughput.
+### **Fase 2: Infraestructura Core - Asincronía y Notificaciones**
+*Objetivo: Configurar los hilos de ejecución para el ETL y el canal de comunicación en tiempo real.*
 
-### Fase 6: API y seguridad
-- **TASK-050:** POST `/api/etl/start-process` (202 + `{jobId}`), validaciones y rol de acceso.
-- **TASK-051:** GET `/api/etl/jobs/{jobId}/status` con contadores y `details`.
-- **Criterios:** E2E-API-01 circuito completo; SEC-API-01 política de acceso.
+*   **[ ] `TASK-INGESTA-04`:** Configurar Ejecutor Asincrónico
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Acción:** Crear la clase `AsyncConfig` con `@EnableAsync`. Definir un `Bean` de `ThreadPoolTaskExecutor` con el nombre `etlExecutor`. Configurar el core size, max size y queue capacity desde `application.properties`.
+    *   **Verificación:**
+        *   **Éxito:** La aplicación arranca y el bean `etlExecutor` está presente en el contexto de Spring.
 
-### Fase 7: Observabilidad
-- **TASK-060:** Métricas (temporizadores por etapa, filas/s, batch-size, hilos/cola).
-- **TASK-061:** Logging estructurado con MDC (`jobId`, `fileHash`, `userId`, `minDate`, `maxDate`).
-- **Criterios:** OBS-01 métricas visibles; OBS-02 correlación en logs y equivalencia con eventos STOMP.
+*   **[ ] `TASK-INGESTA-05`:** Configurar WebSockets (STOMP)
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Acción:**
+        1.  Añadir la dependencia `spring-boot-starter-websocket` al `pom.xml`.
+        2.  Crear `WebSocketConfig` para registrar el endpoint STOMP en `/ws` y configurar el message broker.
+    *   **Verificación:**
+        *   **Éxito:** La aplicación arranca y un cliente de WebSocket puede conectarse a `http://localhost:8080/ws`.
 
-### Fase 8: Mantenimiento de particiones
-- **TASK-070:** Job de creación/rotación de particiones (anual o mensual según volumetría real).
-- **TASK-071:** Verificación de ANALYZE/VACUUM y checks de sanidad (cantidad/peso >= 0).
-- **Criterios:** PART-01 nuevas particiones a tiempo; PART-02 sin degradación en consultas típicas.
+*   **[ ] `TASK-INGESTA-06`:** Implementar Seguridad para WebSockets
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Dependencias:** `TASK-INGESTA-05`.
+    *   **Acción:** Crear un `ChannelInterceptor` que intercepte los mensajes `CONNECT` para extraer el token JWT del header, validarlo y asociar el `Principal` del usuario a la sesión del WebSocket.
+    *   **Verificación:**
+        *   **Éxito:** Un cliente WebSocket que se conecta con un JWT válido establece la conexión.
+        *   **Falla:** Un cliente sin JWT o con un JWT inválido es rechazado.
 
-## 4) Skeletons clave
-```java
-@RestController
-@RequiredArgsConstructor
-@RequestMapping("/api/etl")
-public class EtlController {
-    private final EtlProcessingService service;
+*   **[ ] `TASK-INGESTA-07`:** Crear Servicio de Notificaciones
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Dependencias:** `TASK-INGESTA-05`.
+    *   **Acción:**
+        1.  Crear el DTO `NotificationPayload(String status, String message)`.
+        2.  Crear `NotificationService` que inyecte `SimpMessagingTemplate`.
+        3.  Implementar un método `notifyUser(String userId, String jobId, NotificationPayload payload)` que envíe el mensaje al destino privado `/user/topic/etl-jobs/{jobId}`.
+    *   **Verificación:**
+        *   **Éxito:** Un test unitario con `@Mock SimpMessagingTemplate` verifica que `convertAndSendToUser` es llamado con los parámetros correctos.
 
-    @PostMapping("/start-process")
-    public ResponseEntity<Map<String,Object>> start(@RequestParam MultipartFile file, Principal p,
-                                                   @RequestParam(required=false, defaultValue="false") boolean force) {
-        UUID jobId = service.startAsync(file, p.getName(), force);
-        return ResponseEntity.accepted().body(Map.of("jobId", jobId));
-    }
-}
-```
+---
 
-```java
-@Service
-@RequiredArgsConstructor
-public class EtlProcessingService {
-    private final JobRegistryService jobs;
-    private final NotificationService notify;
-    private final Parser parser;
-    private final DataSyncService sync;
+### **Fase 3: Lógica de Negocio - Gobernanza y Sincronización**
+*Objetivo: Implementar la lógica de negocio que asegura la robustez, idempotencia y atomicidad del proceso.*
 
-    @Async("etlExecutor")
-    public UUID startAsync(MultipartFile file, String user, boolean force) {
-        UUID jobId = jobs.start(file.getOriginalFilename(), hash(file), user, force);
-        try {
-            notify.started(jobId);
-            var batch = parser.parse(file.getInputStream());
-            var range = batch.getDateRange();
-            jobs.guardWindowOrThrow(range.min(), range.max()); // 409 si solape
-            if (isUpsertMode()) {
-                sync.syncWithUpsert(batch.getRows());
-            } else {
-                sync.syncWithDeleteInsert(range.min(), range.max(), batch.getRows());
-            }
-            jobs.success(jobId, batch.getProcessed(), batch.getQuarantined());
-            notify.success(jobId);
-        } catch (Exception ex) {
-            jobs.fail(jobId, ex.getMessage());
-            notify.fail(jobId, ex.getMessage());
-        }
-        return jobId;
-    }
-}
-```
+*   **[ ] `TASK-INGESTA-08`:** Implementar Servicio de Gobernanza de Jobs
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Dependencias:** `TASK-INGESTA-03`.
+    *   **Acción:** Crear `EtlJobService`. Implementar métodos para:
+        *   `createJob(...)`: Crea una nueva entrada en `etl_jobs` con estado `INICIADO`.
+        *   `updateStatus(...)`: Cambia el estado de un job.
+        *   `isWindowLocked(...)`: Lógica de guarda que verifica si un rango de fechas se solapa con otro job activo.
+        *   `findByFileHash(...)`: Verifica la idempotencia a nivel de archivo.
+    *   **Verificación:**
+        *   **Éxito:** Tests de integración validan que la guarda de ventana (`isWindowLocked`) retorna `true` para rangos superpuestos y `false` para rangos libres.
+        *   **Falla:** Un test que intenta crear un job con un `file_hash` duplicado lanza una `DataIntegrityViolationException`.
 
-## 5) Pruebas
-- **Unitarias:** validación/parseo/hash, estados y eventos.
-- **Integración:** delete por rango, unicidad de negocio, advisory lock.
-- **E2E:** 202, WS, GET status, re-ejecución idempotente, 409 por solape, y comparación DELETE_INSERT vs UPSERT en throughput/locks.
+*   **[ ] `TASK-INGESTA-09`:** Implementar Servicio de Sincronización de Datos
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Dependencias:** `TASK-INGESTA-03`.
+    *   **Acción:** Crear `DataSyncService`. Implementar los siguientes métodos `@Transactional`:
+        *   `syncWithDeleteInsert(LocalDate minDate, LocalDate maxDate, List<FactProduction> records)`: Borra los datos en el rango y luego inserta el nuevo lote.
+        *   (Opcional, si se activa) `syncWithUpsert(...)` usando `JdbcTemplate` y `ON CONFLICT`.
+    *   **Verificación:**
+        *   **Éxito:** Un test de integración verifica que una ejecución exitosa persiste los datos.
+        *   **Falla:** Un test de integración que simula una excepción a mitad de la inserción verifica que se realiza un `rollback` completo y no quedan datos parciales.
+
+---
+
+### **Fase 4: Orquestación y Exposición API**
+*Objetivo: Ensamblar todos los componentes y exponer la funcionalidad de forma segura a través de una API REST.*
+
+*   **[ ] `TASK-INGESTA-10`:** Implementar el Orquestador Asincrónico
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Dependencias:** `TASK-INGESTA-07`, `TASK-INGESTA-08`, `TASK-INGESTA-09`.
+    *   **Acción:** Crear `EtlProcessingService` con el método `@Async("etlExecutor")`. Este método orquestará la lógica principal:
+        1.  Validar archivo (hash, tipo, etc.).
+        2.  Llamar a `EtlJobService` para crear el job y verificar las guardas de concurrencia.
+        3.  Notificar estado `PROCESANDO`.
+        4.  Parsear el archivo.
+        5.  Llamar a `DataSyncService` para persistir los datos.
+        6.  Notificar `EXITO` o `FALLO` y actualizar el estado final del job.
+    *   **Verificación:**
+        *   **Éxito:** Un test de integración de punta a punta (con `@EnableAsync`) que provee un archivo válido resulta en un estado final de `EXITO` en la base de datos.
+
+*   **[ ] `TASK-INGESTA-11`:** Crear el Controlador API
+    *   **Propietario:** Jaime Vicencio (Backend)
+    *   **Dependencias:** `TASK-INGESTA-10`.
+    *   **Acción:** Crear `EtlController` con los siguientes endpoints protegidos:
+        *   `POST /api/etl/start-process`: Recibe el `MultipartFile`, obtiene el `userId` del `Principal`, invoca al orquestador y retorna `202 Accepted` con el `jobId`.
+        *   `GET /api/etl/jobs/{jobId}/status`: Consulta `EtlJobService` y devuelve el estado actual del job.
+    *   **Verificación:**
+        *   **Éxito:** Un test con `MockMvc` y un token JWT válido a `POST /api/etl/start-process` retorna un `202`.
+        *   **Falla:** Una petición sin token retorna `401`. Una petición a un job con un rango de fechas bloqueado retorna `409 Conflict`.

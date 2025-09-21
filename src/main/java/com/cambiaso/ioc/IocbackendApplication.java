@@ -2,8 +2,12 @@ package com.cambiaso.ioc;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
+@EntityScan("com.cambiaso.ioc.persistence.entity")
+@EnableJpaRepositories("com.cambiaso.ioc.persistence.repository")
 public class IocbackendApplication {
 
 	public static void main(String[] args) {

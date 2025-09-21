@@ -49,6 +49,9 @@ build/
 # VS Code
 .vscode/
 
+# Gemini Agent
+.gemini/
+
 # 7. OS-specific Files
 # Mantener el repositorio limpio en diferentes sistemas operativos.
 .DS_Store
