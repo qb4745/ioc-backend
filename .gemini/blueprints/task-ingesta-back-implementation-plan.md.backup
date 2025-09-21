@@ -1,0 +1,81 @@
+# **Blueprint de Implementación: TASK-INGESTA-BACK (v8 - Production Grade)**
+
+#### **1. Resumen y Objetivo**
+Este documento detalla las tareas y el plan de pruebas para construir el **Sistema de Ingesta y Sincronización Dimensional**. El objetivo es producir un sistema **gobernado, concurrente-seguro, idempotente a múltiples niveles, transaccional, asincrónico y observable**, listo para un entorno de producción.
+
+#### **2. Plan de Implementación y Pruebas por Fases**
+
+##### **Fase 1: Configuración de la Infraestructura Core y Modelo de Datos**
+
+*   **[ ] `TASK-INGESTA-BACK-001`:** Definir y Crear el Esquema de BBDD Completo.
+    *   **Acción:** Crear y ejecutar el `schema.sql` (v5.0) en Supabase, que incluye `fact_production` (particionada), dimensiones, tablas de gobernanza, la **clave de negocio única** y los **índices operativos**.
+    *   **Verificación:** Todas las tablas, particiones, índices y constraints existen correctamente en Supabase.
+
+*   **[ ] `TASK-INGESTA-BACK-002`:** Mapear Entidades JPA (con Clave Compuesta).
+    *   **Acción:** Crear todas las entidades JPA. **Crucial:** Para `FactProduction`, implementar la clave primaria compuesta (`id`, `fecha_contabilizacion`) usando la estrategia `@IdClass`.
+    *   **Verificación:** El proyecto compila y los repositorios pueden realizar operaciones CRUD básicas.
+
+*   **[ ] `TASK-INGESTA-BACK-003`:** Configurar el Pool de Hilos Asíncrono y WebSockets.
+    *   **Acción:** Crear `AsyncConfig` con el `ThreadPoolTaskExecutor` nombrado `etlExecutor`. Añadir la dependencia y configuración de `WebSocketConfig`.
+    *   **Verificación:** La aplicación arranca sin errores de configuración.
+
+##### **Fase 2: Implementación de la Lógica de Gobernanza y Control de Concurrencia**
+
+*   **[ ] `TASK-INGESTA-BACK-004`:** Implementar el Servicio de Gobernanza (`EtlJobService`).
+    *   **Acción:** Crear `EtlJobService` con métodos para `createJob`, `updateJobStatus`, `findJobById`, `isDuplicate(fileHash)` y el nuevo método **`isWindowLocked(minDate, maxDate)`** que comprueba si hay jobs activos con rangos de fecha superpuestos.
+    *   **Verificación:** Pruebas unitarias para cada método, incluyendo el nuevo `isWindowLocked`. Ver `UT-JS-01`, `UT-JS-02`.
+
+*   **[ ] `TASK-INGESTA-BACK-005`:** Implementar Servicios de Dimensión (`DimMaquinaService`, `DimMaquinistaService`).
+    *   **Acción:** Crear servicios con la lógica "Find or Create" para cada dimensión.
+    *   **Verificación:** Ver casos `IT-DIM-01`, `IT-DIM-02`.
+
+##### **Fase 3: Implementación de la Lógica de Sincronización Dual**
+
+*   **[ ] `TASK-INGESTA-BACK-006`:** Implementar el `DataSyncService` con Estrategia Dual.
+    *   **Acción:**
+        1.  Crear `DataSyncService` con el método `@Transactional syncWithDeleteInsert(...)`.
+        2.  **(Opcional para MVP, pero recomendado):** Implementar un segundo método `@Transactional syncWithUpsert(...)` que use `JdbcTemplate` para realizar una operación `INSERT ... ON CONFLICT DO UPDATE` nativa de PostgreSQL, basándose en la clave de negocio única.
+    *   **Verificación:** Ver casos `IT-DS-01`, `IT-DS-02` y el nuevo `IT-DS-03`.
+
+##### **Fase 4: Orquestación y Capa de API**
+
+*   **[ ] `TASK-INGESTA-BACK-007`:** Implementar `EtlProcessingService` (Orquestador).
+    *   **Acción:** Implementar el servicio `@Async("etlExecutor")` que orquesta la transformación, el lookup de dimensiones y la llamada a `dataSyncService.syncWithDeleteInsert(...)`.
+    *   **Verificación:** Ver casos `IT-ORC-01`, `IT-ORC-02`.
+
+*   **[ ] `TASK-INGESTA-BACK-008`:** Refactorizar el `EtlController` con "Job Guards".
+    *   **Acción:** Modificar el endpoint `POST /api/etl/start-process` para que, antes de crear un job, llame a `etlJobService.isDuplicate()` y `etlJobService.isWindowLocked()`, devolviendo `409 Conflict` si alguna de las dos validaciones es positiva. Crear el endpoint `GET /api/etl/jobs/{jobId}/status`.
+    *   **Verificación:** Ver casos `IT-API-01` a `IT-API-05`.
+
+*   **[ ] `TASK-INGESTA-BACK-009`:** Implementar `NotificationService`.
+    *   **Acción:** Crear el servicio de notificaciones.
+    *   **Verificación:** Ver casos `UT-NS-01`, `UT-NS-02`.
+
+---
+
+#### **3. Estrategia de Pruebas por Capas (Production Grade)**
+Esta sección define **CÓMO** se validará la calidad.
+
+##### **3.1. Pruebas Unitarias**
+*   **`UT-NS-01/02` (NotificationService):** (Sin cambios).
+*   **`UT-JS-01` (EtlJobService - CRUD):** Pruebas para `create`, `update`, `find`.
+*   **`UT-JS-02` (EtlJobService - Guards):** Pruebas para la lógica de `isDuplicate` y `isWindowLocked`.
+
+##### **3.2. Pruebas de Integración**
+*   **`IT-DIM-01/02` (Servicios de Dimensión):** (Sin cambios).
+*   **`IT-JPA-01` (Repositorio de Hechos):** Verifica el borrado por rango.
+*   **`IT-DS-01/02` (DataSyncService - Delete/Insert):** (Sin cambios).
+*   **`IT-DS-03` (DataSyncService - UPSERT):** Verifica que el método `syncWithUpsert` inserta filas nuevas y actualiza las existentes correctamente, sin borrar.
+*   **`IT-ORC-01/02` (EtlProcessingService):** (Sin cambios).
+*   **`IT-API-01/02` (Controller - Éxito y Auth):** (Sin cambios).
+*   **`IT-API-03` (Controller - Archivo Duplicado):** Verifica que enviar el mismo archivo dos veces resulta en `409 Conflict`.
+*   **`IT-API-04` (Controller - Ventana Bloqueada):** Verifica que intentar iniciar un job con un rango de fechas que se solapa con uno en progreso resulta en `409 Conflict`.
+*   **`IT-API-05` (Controller - Consulta de Estado):** Verifica que `GET /jobs/{jobId}` devuelve el estado correcto.
+
+##### **3.3. Pruebas End-to-End (E2E)**
+*   **`E2E-ETL-01/02` (Flujo Feliz y Re-carga):** (Sin cambios, pero ahora se valida la creación del job y la consulta de su estado).
+*   **`E2E-ETL-03` (Flujo de Concurrencia):**
+    1.  **Acción:** Iniciar una carga de un archivo grande (días 1-10). Inmediatamente después, intentar iniciar una segunda carga con un archivo que contenga días 8-12.
+    2.  **Resultado esperado:** La primera petición devuelve `202 Accepted`. La segunda petición devuelve **`409 Conflict`** con un mensaje "Ventana de fechas en proceso".
+
+---

@@ -1,0 +1,110 @@
+# **Diseño de Arquitectura: Sistema de Ingesta y Sincronización Dimensional**
+
+**Proyecto:** Inteligencia Operacional Cambiaso (IOC)
+**Fecha:** 14 de Septiembre de 2025
+**Autor:** [Tu Nombre/Equipo]
+**Versión:** 7.0 (Production Grade)
+
+#### **1. Resumen Ejecutivo**
+
+Este documento detalla la arquitectura para el sistema de Ingesta, Transformación y Carga (ETL). El sistema está diseñado para ser **gobernado, concurrente-seguro, idempotente a múltiples niveles y transaccional**, proporcionando una plataforma robusta y auditable para la sincronización de datos de producción.
+
+Para cumplir con los RNF de **Rendimiento, Usabilidad, Fiabilidad e Integridad de Datos**, la arquitectura implementa un modelo de **Esquema de Estrella**, gestiona cada carga como un "Job" rastreable con protección contra la concurrencia, y utiliza un patrón de sincronización dual (Delete/Insert y UPSERT) para garantizar la consistencia.
+
+#### **2. Requisitos y Desafíos Arquitectónicos**
+
+*   **Modelado para BI:** Estructura de datos optimizada para análisis (Esquema de Estrella).
+*   **Gobernanza y Auditoría:** Rastrear cada ejecución del ETL y prevenir reprocesos.
+*   **Gestión de Concurrencia:** Prevenir condiciones de carrera (`race conditions`) cuando se procesan archivos con rangos de fechas superpuestos simultáneamente.
+*   **Idempotencia Robusta:** Garantizar la integridad a nivel de archivo (no procesar el mismo archivo dos veces) y a nivel de fila (no crear duplicados lógicos).
+*   **Observabilidad:** Permitir a los clientes consultar el estado de un proceso de ingesta.
+
+#### **3. Arquitectura Seleccionada: Servicio Asincrónico Gobernado y Concurrente-Seguro**
+
+Se ha seleccionado un modelo de **Servicio Asincrónico Integrado** que incorpora una capa de gobernanza explícita y mecanismos de control de concurrencia.
+
+**Componentes Clave:**
+
+1.  **Habilitadores de Spring Framework:** `@EnableAsync` con un `ThreadPoolTaskExecutor` explícito y `spring-boot-starter-websocket`.
+
+2.  **Servicio de Gobernanza (`EtlJobService`):**
+    *   Gestiona el ciclo de vida de los `etl_jobs`, incluyendo la creación, actualización de estado y consulta.
+    *   **Responsabilidades Nuevas:**
+        *   **Control de Concurrencia (Job Guard):** Implementa la lógica para verificar si ya existe un job en estado `EN_PROCESO` con un rango de fechas superpuesto.
+        *   **Idempotencia de Proceso:** Utiliza el `file_hash` para rechazar archivos duplicados.
+
+3.  **Punto de Entrada Unificado (`EtlController`):**
+    *   `POST /api/etl/start-process`: Orquesta las validaciones iniciales, incluyendo la llamada al "job guard".
+    *   `GET /api/etl/jobs/{jobId}/status`: Permite la consulta del estado del job.
+
+4.  **Servicio de Orquestación Asíncrono (`EtlProcessingService`):**
+    *   Orquesta la transformación y la resolución de claves de dimensión (lookup "Find or Create").
+
+5.  **Servicio de Sincronización Transaccional (`DataSyncService`):**
+    *   Encapsula la lógica de interacción con la base de datos.
+    *   **Estrategia Dual:** Expone dos métodos transaccionales:
+        1.  `syncWithDeleteInsert(...)` (Default para el MVP): Implementa la lógica de "borrar por rango e insertar en lote".
+        2.  `syncWithUpsert(...)`: Implementa una lógica de `INSERT ... ON CONFLICT DO UPDATE` utilizando la clave de negocio única. Esta estrategia está disponible para futuras optimizaciones.
+
+#### **4. Flujo de Datos y Secuencia de Eventos (con Control de Concurrencia)**
+
+##### **4.1. Diagrama de Secuencia del Flujo Gobernado y Seguro**
+
+```mermaid
+sequenceDiagram
+    participant Cliente as Cliente (React/Script)
+    participant Controller as EtlController
+    participant JobService as EtlJobService
+    participant Worker as EtlProcessingService (@Async)
+    participant Syncer as DataSyncService (@Transactional)
+
+    Cliente->>+Controller: 1. POST /start-process (con .txt)
+    Controller->>+JobService: 2. isDuplicate(fileHash)?
+    Controller->>+JobService: 3. isWindowLocked(minDate, maxDate)?
+    alt Archivo duplicado O ventana bloqueada
+        JobService-->>Controller: true
+        Controller-->>-Cliente: 409 Conflict
+    else Archivo nuevo y ventana libre
+        JobService-->>Controller: false
+        Controller->>+JobService: 4. createJob(file, userId)
+        JobService-->>Controller: job_id
+        Controller->>+Worker: 5. processFile(jobId, file)
+        Controller-->>-Cliente: 6. 202 Accepted + job_id
+    end
+    
+    activate Worker
+    Note right of Worker: 7. Lógica de Transformación y Lookup de Dimensiones...
+    Worker->>+Syncer: 8. syncDataForDateRange(...)
+    activate Syncer
+    Note right of Syncer: 9. (Tx) DELETE + INSERT [BATCH] en fact_production
+    deactivate Syncer
+    Worker->>+JobService: 10. updateJobStatus(jobId, "EXITO")
+    deactivate Worker
+```
+
+#### **5. Diseño para la Resiliencia, Idempotencia y Seguridad**
+
+##### **5.1. Estrategia de Gobernanza y Control de Concurrencia**
+
+*   **Job Guard (Protección contra Concurrencia):** Antes de crear un nuevo `EtlJob`, el `EtlController` consultará al `EtlJobService` para verificar si ya existe algún job en un estado activo (`INICIADO`, `TRANSFORMANDO`, `SINCRONIZANDO`) cuyo rango de fechas (`min_date`, `max_date`) se solape con el del archivo entrante. Si se detecta un solapamiento, la nueva petición será rechazada con `HTTP 409 Conflict`, previniendo condiciones de carrera.
+
+##### **5.2. Estrategia de Idempotencia Multinivel**
+
+1.  **Idempotencia de Proceso (por Archivo):** Garantizada por la constraint `UNIQUE` sobre `file_hash` en la tabla `etl_jobs`.
+2.  **Idempotencia de Datos (por Ventana):** Garantizada por la estrategia transaccional de "borrar e insertar" del `DataSyncService`.
+3.  **Idempotencia de Fila (por Clave de Negocio):** Garantizada a nivel de base de datos por el `UNIQUE INDEX` en `(fecha_contabilizacion, maquina_fk, numero_log)` sobre la tabla `fact_production`. Esta es la red de seguridad final y el prerrequisito para la estrategia de `UPSERT`.
+
+##### **5.3. Estrategia de Sincronización Dual y Evolutiva**
+
+El `DataSyncService` se diseña para ser flexible. El método por defecto para el MVP será `syncWithDeleteInsert`. Sin embargo, la existencia de la clave de negocio única permite la implementación futura de un método `syncWithUpsert` (basado en `INSERT ... ON CONFLICT`). Este segundo método se puede activar mediante un *feature toggle* (una propiedad de configuración) cuando el volumen de datos o los requisitos de rendimiento lo justifiquen, sin necesidad de una re-arquitectura.
+
+##### **5.4. Observabilidad y Mapeo JPA**
+
+*   Se define un endpoint `GET /api/etl/jobs/{jobId}/status` para la consulta del estado de los jobs, mejorando la observabilidad.
+*   Se establece que la clave primaria compuesta de `fact_production` (`id`, `fecha_contabilizacion`) debe ser mapeada en la entidad JPA correspondiente utilizando una estrategia estándar como `@IdClass` para evitar problemas de persistencia.
+
+#### **6. Justificación y Evolución Futura**
+
+Esta arquitectura de servicio asincrónico gobernado proporciona una base de nivel de producción que es robusta, auditable, observable y segura contra problemas de concurrencia. El diseño es modular y su estrategia dual de sincronización lo prepara para escalar y adaptarse a futuros aumentos en el volumen de datos y la complejidad de la ingesta.
+
+---

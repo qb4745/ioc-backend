@@ -156,8 +156,6 @@ class PersistenceLayerTest {
         maquina2.setNombreMaquina("Maquina Duplicada 2");
 
         // We expect a DataIntegrityViolationException due to the "unique = true" constraint
-        assertThatThrownBy(() -> {
-            dimMaquinaRepository.saveAndFlush(maquina2);
-        }).isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> dimMaquinaRepository.saveAndFlush(maquina2)).isInstanceOf(DataIntegrityViolationException.class);
     }
 }
