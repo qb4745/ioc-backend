@@ -33,7 +33,7 @@ public class NotificationService {
         try {
             messagingTemplate.convertAndSendToUser(userId, destination, payload);
             activeUsers.add(userId);
-            log.debug("Notification sent to user {} for job {}: {}", userId, jobId, payload.status());
+            log.debug("Notification sent to user {} for job {}: {}", userId, jobId, payload.getStatus());
         } catch (Exception e) {
             log.error("Failed to send notification to user {} for job {}: {}", userId, jobId, e.getMessage(), e);
             throw new NotificationException("Failed to send notification", e);
@@ -52,7 +52,7 @@ public class NotificationService {
         String destination = String.format("/topic/etl-jobs/%s", jobId);
         try {
             messagingTemplate.convertAndSend(destination, payload);
-            log.info("Broadcast sent for job {}: {}", jobId, payload.status());
+            log.info("Broadcast sent for job {}: {}", jobId, payload.getStatus());
         } catch (Exception e) {
             log.error("Failed to broadcast for job {}: {}", jobId, e.getMessage(), e);
             throw new NotificationException("Failed to broadcast notification", e);
@@ -99,8 +99,8 @@ public class NotificationService {
         return userId != null && !userId.trim().isEmpty()
                && jobId != null
                && payload != null
-               && payload.status() != null
-               && !payload.status().trim().isEmpty();
+               && payload.getStatus() != null
+               && !payload.getStatus().trim().isEmpty();
     }
 
     // Custom exception for notification failures

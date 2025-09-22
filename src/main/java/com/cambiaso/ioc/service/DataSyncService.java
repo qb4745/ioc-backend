@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.lang.NonNull;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -18,7 +19,7 @@ public class DataSyncService {
     private final FactProductionRepository factProductionRepository;
 
     @Transactional
-    public void syncWithDeleteInsert(LocalDate minDate, LocalDate maxDate, List<FactProduction> records) {
+    public void syncWithDeleteInsert(LocalDate minDate, LocalDate maxDate, @NonNull List<FactProduction> records) {
         try {
             log.info("Starting data sync for date range {} to {} with {} records",
                     minDate, maxDate, records.size());
@@ -29,7 +30,7 @@ public class DataSyncService {
             log.debug("Deleted existing records in date range {} to {}", minDate, maxDate);
 
             // Step 2: Insert the new batch of records.
-            if (records != null && !records.isEmpty()) {
+            if (!records.isEmpty()) {
                 factProductionRepository.saveAll(records);
                 // We must flush here to force Hibernate to send the INSERT statements to the DB.
                 // This will trigger any database-level constraints (like NOT NULL) within the transaction.

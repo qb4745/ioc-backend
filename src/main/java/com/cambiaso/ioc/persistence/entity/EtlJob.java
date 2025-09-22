@@ -2,13 +2,19 @@ package com.cambiaso.ioc.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import org.hibernate.annotations.CreationTimestamp;
 import java.time.OffsetDateTime;
 import java.util.UUID;
-import org.hibernate.annotations.CreationTimestamp;
 
 @Data
 @Entity
 @Table(name = "etl_jobs")
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class EtlJob {
 
     @Id

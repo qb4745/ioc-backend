@@ -3,6 +3,7 @@ package com.cambiaso.ioc.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.lang.NonNull;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -30,18 +31,22 @@ public class WebSocketSecurityConfig implements WebSocketMessageBrokerConfigurer
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(new ChannelInterceptor() {
             @Override
-            public Message<?> preSend(Message<?> message, MessageChannel channel) {
+            public @NonNull Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
                 StompHeaderAccessor accessor =
                         MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
-                if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+                if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
                     String authHeader = accessor.getFirstNativeHeader("Authorization");
                     if (authHeader != null && authHeader.startsWith("Bearer ")) {
                         String token = authHeader.substring(7);
-                        Jwt jwt = jwtDecoder.decode(token);
-                        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-                        Authentication authentication = converter.convert(jwt);
-                        accessor.setUser(authentication);
+                        try {
+                            Jwt jwt = jwtDecoder.decode(token);
+                            JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+                            Authentication authentication = converter.convert(jwt);
+                            accessor.setUser(authentication);
+                        } catch (Exception e) {
+                            // Invalid JWT; ignore and proceed without setting authentication
+                        }
                     }
                 }
                 return message;
