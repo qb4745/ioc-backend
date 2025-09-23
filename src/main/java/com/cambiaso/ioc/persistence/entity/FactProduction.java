@@ -69,4 +69,8 @@ public class FactProduction {
 
     @Column(length = 100)
     private String bodeguero;
+
+    // Added to support parsing of "Status" column
+    @Column(name = "status_origen", length = 10)
+    private String statusOrigen;
 }
