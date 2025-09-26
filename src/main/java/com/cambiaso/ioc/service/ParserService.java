@@ -44,7 +44,8 @@ public class ParserService {
         Map<String, Integer> headerMap = new HashMap<>();
         boolean headerFound = false;
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.ISO_8859_1))) {
+        // Use "Windows-1252" charset for files originating from Windows systems
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "Windows-1252"))) {
             String line;
             int lineNumber = 0;
             while ((line = reader.readLine()) != null) {

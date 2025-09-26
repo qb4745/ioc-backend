@@ -43,36 +43,58 @@ Este documento registra el desglose técnico de las implementaciones realizadas 
 <!-- FIN DE LA PLANTILLA DE HISTORIA -->
 
 <!-- NUEVAS ENTRADAS DE HISTORIAS SE AÑADEN AQUÍ -->
----
+<!-- NUEVAS ENTRradas DE HISTORIAS SE AÑADEN AQUÍ -->
 ## IOC-001: Cargar y validar un archivo CSV con datos de producción
-*   **Estado:** 🟡 **En Progreso**
-*   **Objetivo de Negocio (El "Para Qué"):** Permitir a los administradores cargar archivos de producción de forma segura, obteniendo feedback inmediato sobre la validez del formato del archivo.
+
+*   **Estado:** ✅ **Terminada (Backend)**
+*   **Objetivo de Negocio (El "Para Qué"):** Permitir a los administradores cargar archivos de producción de forma segura y asíncrona, obteniendo feedback en tiempo real sobre el estado del procesamiento para agilizar la toma de decisiones.
 *   **Criterios de Aceptación Clave:**
-    *   La interfaz permite seleccionar y subir un archivo CSV.
-    *   El sistema rechaza archivos con formato incorrecto (ej. no CSV).
-    *   Se muestra una notificación de éxito o error al finalizar la carga.
+    *   La API permite subir un archivo CSV de forma segura.
+    *   El sistema rechaza archivos duplicados para garantizar la idempotencia.
+    *   El procesamiento del archivo es asíncrono; el cliente recibe una respuesta inmediata (`202 Accepted`).
+    *   El cliente puede consultar el estado detallado de un job de carga en cualquier momento.
+    *   El cliente recibe notificaciones en tiempo real sobre el progreso del job vía WebSockets.
 
 ### Desglose Técnico de la Implementación
 
-*   **Plan Aprobado:** Seguir el blueprint `02-FTV-ingesta-de-datos.md` para construir la vista de carga de archivos, incluyendo un `Dropzone` para la selección de archivos y una tabla para el historial.
+*   **Plan Aprobado:** Se ejecutó el plan `task-ingesta-back-implementation-plan.md`, construyendo el sistema en capas:
+    1.  **Persistencia:** Mapeo de entidades JPA y repositorios.
+    2.  **Infraestructura:** Configuración de un pool de hilos (`@Async`) y WebSockets (STOMP) con seguridad integrada.
+    3.  **Lógica de Negocio:** Implementación de servicios transaccionales para la gobernanza de jobs y la sincronización de datos.
+    4.  **API:** Orquestación del flujo completo y exposición a través de endpoints REST seguros.
+
 *   **Archivos Creados/Modificados:**
-    *   **Creados:** `src/pages/admin/DataIngestionPage.tsx`, `src/components/admin/DataUploadDropzone.tsx`, `src/components/admin/UploadHistoryTable.tsx`, `src/components/admin/ErrorLogModal.tsx`, `src/components/common/EmptyState.tsx`.
-*   **Resumen de la Implementación:** Se desarrolló la página completa de Ingesta de Datos. El componente `DataUploadDropzone` gestiona la selección de archivos y la validación de formato en el frontend. La página principal orquesta el estado de carga y muestra el historial en el componente `UploadHistoryTable`, que a su vez puede mostrar un estado vacío (`EmptyState`) o los detalles de un error en un `ErrorLogModal`.
+    *   `com.cambiaso.ioc.controller.EtlController`
+    *   `com.cambiaso.ioc.service.*` (EtlProcessingService, EtlJobService, DataSyncService, NotificationService, ParserService)
+    *   `com.cambiaso.ioc.persistence.entity.*` (EtlJob, FactProduction, etc.)
+    *   `com.cambiaso.ioc.persistence.repository.*` (EtlJobRepository, etc.)
+    *   `com.cambiaso.ioc.config.*` (AsyncConfig, WebSocketConfig, WebSocketSecurityConfig)
+    *   `com.cambiaso.ioc.dto.*` (EtlJobStatusDto, NotificationPayload)
+    *   `com.cambiaso.ioc.exception.*` (JobConflictException, etc.)
+    *   `src/test/java/com/cambiaso/ioc/**` (Tests de integración y unitarios)
+
+*   **Resumen de la Implementación:**
+    Se ha construido un pipeline de ETL asincrónico y robusto. El `EtlController` recibe el archivo, valida su unicidad mediante un hash SHA-256 y crea un registro en `EtlJobService`. Inmediatamente, delega el procesamiento a `EtlProcessingService` en un hilo separado (`@Async`), devolviendo un `202 Accepted` con el `jobId`. El orquestador se encarga de parsear el archivo (con lógica "find-or-create" para dimensiones), validar la concurrencia con "window locking", sincronizar los datos de forma transaccional (`delete-insert`) y notificar cada paso del proceso (`PROCESANDO`, `EXITO`, `FALLO`) al usuario a través de `NotificationService` y WebSockets seguros.
 
 ### Verificación y Pruebas Realizadas
 
-*   **Pruebas Manuales (End-to-End):**
-    *   **CAT-1 (Validación Frontend):** ✅ **Verificado.** Al intentar subir un archivo no `.csv`, el componente muestra un error visual y no inicia la carga.
-    *   **CAT-2 (Estado de Carga):** ✅ **Verificado.** Durante la carga (simulada), el `Dropzone` muestra un `Spinner` y los botones se deshabilitan.
-    *   **CAT-3 (Éxito de Subida):** ✅ **Verificado.** Tras una carga exitosa (simulada), se muestra un toast de éxito y la tabla de historial se actualiza.
-    *   **CAT-4 (Error de Subida):** 🟡 **Pendiente.** Depende de la implementación del backend para recibir y mostrar errores de validación reales.
-    *   **CAT-5 (Historial Vacío):** ✅ **Verificado.** Al simular un historial vacío, la tabla muestra el componente `EmptyState`.
-    *   **CAT-6 (Ver Detalles de Errores):** 🟡 **Pendiente.** Depende de la implementación del backend para recibir y mostrar errores reales.
+*   **Pruebas Automatizadas:**
+    *   **(Backend) Pruebas de Integración y Unitarias:** Se ha creado una suite de pruebas exhaustiva que valida cada capa del sistema:
+        *   `PersistenceLayerTest`: Valida todos los mapeos de entidades JPA y constraints de la base de datos con H2.
+        *   `ParserServiceTest`: Asegura que el parser procesa correctamente el formato de archivo real, incluyendo la lógica "find-or-create".
+        *   `NotificationServiceTest`: Verifica que las notificaciones se envían al destino y usuario correctos.
+        *   `EtlJobServiceTest`: Valida la lógica de gobernanza, incluyendo la idempotencia por hash y las guardas de concurrencia por rango de fechas.
+        *   `DataSyncServiceTest`: Confirma el comportamiento transaccional atómico, incluyendo el rollback exitoso en caso de fallo.
+        *   `EtlControllerTest`: Prueba la capa de API con `MockMvc`, validando la seguridad de los endpoints, las respuestas HTTP correctas (202, 401, 409) y la invocación del flujo asíncrono.
 
-*   **Commit de Referencia:** `[hash-del-commit]` - `feat(admin): Implementar vista de ingesta de datos`
+*   **Pruebas Manuales (End-to-End):**
+    *   **Caso de Prueba 1 (Happy Path):** 1. Obtener un JWT válido. 2. Enviar una petición `POST` a `/api/etl/start-process` con un archivo CSV válido. **Resultado Esperado:** Recibir una respuesta `202 Accepted` con el `jobId`. 3. Consultar el endpoint `GET /api/etl/jobs/{jobId}/status` y observar la transición de estado hasta `EXITO`.
+    *   **Caso de Prueba 2 (Caso de Error - Duplicado):** 1. Enviar el mismo archivo CSV una segunda vez. **Resultado Esperado:** Recibir una respuesta `409 Conflict` con un mensaje indicando que el archivo ya fue procesado.
+
+*   **Commit de Referencia (Squashed):**
+    *   `[hash-del-commit-post-merge] - feat(etl): implementa pipeline de ingesta asincrónico (IOC-001) (#PR)`
 ---
 
-<!-- NUEVAS ENTRADAS DE HISTORIAS SE AÑADEN AQUÍ -->
 
 ---
 ## IOC-021: Como Usuario, quiero iniciar sesión en la plataforma
@@ -128,7 +150,7 @@ Este documento registra el desglose técnico de las implementaciones realizadas 
     *   `82cf3c2` - `feat: Integrate Supabase authentication` (Implementado como parte de la autenticación inicial)
 ---
 ## IOC-023: Construir el Layout Principal y las Rutas Protegidas
-*   **Estado:** 🟡 **En Progreso**
+*   **Estado:** ✅ **Terminada**
 *   **Objetivo de Negocio (El "Para Qué"):** Establecer la estructura visual principal de la aplicación y asegurar que solo los usuarios autenticados puedan acceder a las secciones protegidas.
 *   **Criterios de Aceptación Clave:**
     *   Se debe crear una estructura visual consistente.
@@ -136,19 +158,11 @@ Este documento registra el desglose técnico de las implementaciones realizadas 
 
 ### Desglose Técnico de la Implementación
 
-*   **Plan Aprobado:** Crear un componente `ProtectedRoute` que verifique la existencia de una sesión de usuario activa. Envolver las rutas que requieren autenticación con este componente.
+*   **Plan Aprobado:** Crear un componente `ProtectedRoute` y un `AppLayout` consistentes. Limpiar el enrutador y el menú lateral para incluir únicamente las rutas relevantes para el MVP.
 *   **Archivos Creados/Modificados:**
     *   **Creados:** `src/components/auth/ProtectedRoute.tsx`.
-    *   **Modificados:** `src/App.tsx`.
-*   **Resumen de la Implementación:** Se creó el componente `ProtectedRoute` que utiliza el `useAuth` hook para verificar la sesión. Si no hay usuario, redirige a `/signin` usando el componente `Navigate` de React Router. En `App.tsx`, se anidaron las rutas del `AppLayout` (incluyendo el `Home` y `Account`) dentro de este `ProtectedRoute`, dejando las rutas de autenticación como públicas. **Trabajo pendiente: Restaurar todas las rutas del dashboard dentro de la ruta protegida.**
-
-### Verificación y Pruebas Realizadas
-
-*   **Pruebas Manuales (End-to-End):**
-    *   **Caso de Prueba 1 (Acceso Protegido):** 1. Sin iniciar sesión, intentar acceder a `/`. **Resultado Esperado:** Redirección a `/signin`.
-    *   **Caso de Prueba 2 (Acceso Permitido):** 1. Iniciar sesión. 2. Navegar a `/`. **Resultado Esperado:** Se muestra el dashboard principal correctamente.
-
-*   **Commit de Referencia:**
-    *   `82cf3c2` - `feat: Integrate Supabase authentication` (Implementado como parte de la autenticación inicial)
+    *   **Modificados:** `src/App.tsx`, `src/layout/AppSidebar.tsx`.
+*   **Resumen de la Implementación:** Se implementó el `ProtectedRoute` para validar la sesión del usuario. Se refactorizó `App.tsx` y `AppSidebar.tsx` para eliminar todas las rutas y enlaces de demostración de la plantilla, dejando una estructura de navegación limpia y enfocada en las funcionalidades del MVP.
+*   **Commit de Referencia:** `90b10f5` - `refactor(layout): Limpiar rutas y enlaces de demostración`
 ---
 
