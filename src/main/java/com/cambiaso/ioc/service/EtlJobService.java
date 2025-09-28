@@ -70,7 +70,7 @@ public class EtlJobService {
     }
 
     @Transactional(readOnly = true)
-    public boolean isWindowLocked(LocalDate minDate, LocalDate maxDate) {
-        return etlJobRepository.existsActiveJobInDateRange(minDate, maxDate);
+    public boolean isWindowLocked(UUID jobId, LocalDate minDate, LocalDate maxDate) {
+        return etlJobRepository.existsActiveJobInDateRange(jobId, minDate, maxDate);
     }
 }

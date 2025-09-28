@@ -10,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,7 +53,7 @@ class DataSyncServiceTest {
     }
 
     private FactProduction createFactProduction(LocalDate date) {
-        // Use the counter to generate a unique ID for the test
+        // Use the counter to generate a unique ID for the test, simulating the BIGSERIAL
         FactProductionId id = new FactProductionId(idCounter++, date);
 
         FactProduction fact = new FactProduction();

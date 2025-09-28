@@ -31,71 +31,77 @@ public class EtlProcessingService {
     private final EtlJobService etlJobService;
     private final NotificationService notificationService;
     private final DataSyncService dataSyncService;
+    private final ParserService parserService;
     private final MeterRegistry meterRegistry;
 
     // Single constructor for autowiring with optional MeterRegistry
     public EtlProcessingService(EtlJobService etlJobService,
                                NotificationService notificationService,
                                DataSyncService dataSyncService,
+                               ParserService parserService,
                                @Autowired(required = false) MeterRegistry meterRegistry) {
         this.etlJobService = etlJobService;
         this.notificationService = notificationService;
         this.dataSyncService = dataSyncService;
+        this.parserService = parserService;
         this.meterRegistry = meterRegistry;
     }
 
     @Async("etlExecutor")
-    @Timed(value = "etl.processing.duration", description = "Time taken to process ETL job")
     public void processFile(MultipartFile file, String userId, UUID jobId) {
-        // Add MDC context for better logging traceability
-        MDC.put("jobId", jobId.toString());
-        MDC.put("userId", userId);
-        MDC.put("fileName", file != null ? file.getOriginalFilename() : "null");
-
-        Timer.Sample sample = startTimer();
-        log.info("Starting ETL process for job ID: {} by user: {}", jobId, userId);
-
+        log.info("Starting ETL process for job ID: {}", jobId);
         try {
-            validateFile(file);
+            if (file == null || file.isEmpty()) {
+                throw new FileValidationException("Uploaded file is null or empty.");
+            }
 
-            // 1. Parse file and extract date ranges
-            log.debug("Job {}: Parsing file...", jobId);
-            notifyUserWithCircuitBreaker(userId, jobId, new NotificationPayload("PROCESANDO", "Parsing file content."));
+            // 1. Parse file and extract records
+            log.debug("Job {}: Parsing file content.", jobId);
+            notificationService.notifyUser(userId, jobId, new NotificationPayload("PROCESANDO", "Parsing file content."));
+            List<FactProduction> parsedRecords = parserService.parse(file.getInputStream());
 
-            // Parse file to extract actual date ranges and records
-            ParsedFileData parsedData = parseFileForData(file);
+            if (parsedRecords.isEmpty()) {
+                log.warn("Job {}: File is empty or contains no valid data rows. Finishing as success.", jobId);
+                etlJobService.updateJobStatus(jobId, "EXITO", "File processed successfully: No data rows found to sync.");
+                notificationService.notifyUser(userId, jobId, new NotificationPayload("EXITO", "File processed, no data rows found."));
+                return;
+            }
 
-            // 2. Update job with date range and check for conflicts
-            log.debug("Job {}: Checking for window lock.", jobId);
-            etlJobService.updateJobDateRange(jobId, parsedData.dateRange().minDate(), parsedData.dateRange().maxDate());
+            // 2. Calculate date range from parsed data
+            LocalDate minDate = parsedRecords.stream()
+                    .map(r -> r.getId().getFechaContabilizacion())
+                    .min(LocalDate::compareTo)
+                    .orElseThrow(() -> new FileValidationException("Could not determine minimum date from file."));
 
-            if (etlJobService.isWindowLocked(parsedData.dateRange().minDate(), parsedData.dateRange().maxDate())) {
+            LocalDate maxDate = parsedRecords.stream()
+                    .map(r -> r.getId().getFechaContabilizacion())
+                    .max(LocalDate::compareTo)
+                    .orElseThrow(() -> new FileValidationException("Could not determine maximum date from file."));
+
+            // 3. Update job with date range and check for conflicts
+            log.debug("Job {}: Checking for window lock for date range {} to {}.", jobId, minDate, maxDate);
+            etlJobService.updateJobDateRange(jobId, minDate, maxDate);
+
+            if (etlJobService.isWindowLocked(jobId, minDate, maxDate)) {
                 throw new JobConflictException("Another ETL job is processing this date range.");
             }
 
-            // 3. Sync data to database using DataSyncService
-            log.debug("Job {}: Synchronizing data.", jobId);
-            notifyUserWithCircuitBreaker(userId, jobId, new NotificationPayload("SINCRONIZANDO", "Writing data to database."));
+            // 4. Sync data to database
+            log.debug("Job {}: Synchronizing {} records to the database.", jobId, parsedRecords.size());
+            notificationService.notifyUser(userId, jobId, new NotificationPayload("SINCRONIZANDO", "Writing data to database."));
+            dataSyncService.syncWithDeleteInsert(minDate, maxDate, parsedRecords);
 
-            // Use the correct method name from DataSyncService
-            dataSyncService.syncWithDeleteInsert(
-                parsedData.dateRange().minDate(),
-                parsedData.dateRange().maxDate(),
-                parsedData.records()
-            );
-
-            // 4. Finalize job
-            log.info("Job {} completed successfully for user {}", jobId, userId);
-            etlJobService.updateJobStatus(jobId, "EXITO", "ETL process completed successfully.");
-            notifyUserWithCircuitBreaker(userId, jobId, new NotificationPayload("EXITO", "Process finished."));
-
-            recordSuccessMetrics(sample);
+            // 5. Finalize job
+            String successDetails = String.format("ETL process completed successfully. Synced %d records.", parsedRecords.size());
+            log.info("Job {} completed successfully.", jobId);
+            etlJobService.updateJobStatus(jobId, "EXITO", successDetails);
+            notificationService.notifyUser(userId, jobId, new NotificationPayload("EXITO", "Process finished."));
 
         } catch (Exception e) {
-            log.error("ETL process failed for job ID: {} by user: {}", jobId, userId, e);
-            handleProcessingError(jobId, userId, e, sample);
-        } finally {
-            MDC.clear();
+            log.error("ETL process failed for job ID: {}", jobId, e);
+            String errorMessage = e.getMessage();
+            etlJobService.updateJobStatus(jobId, "FALLO", errorMessage);
+            notificationService.notifyUser(userId, jobId, new NotificationPayload("FALLO", errorMessage));
         }
     }
 

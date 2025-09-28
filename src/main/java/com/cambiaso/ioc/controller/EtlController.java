@@ -93,21 +93,16 @@ public class EtlController {
         }
 
         String filename = file.getOriginalFilename();
-        if (filename == null || !filename.toLowerCase().endsWith(".csv")) {
-            throw new IllegalArgumentException("Only CSV files are allowed");
+        if (filename == null || !filename.toLowerCase().endsWith(".txt")) {
+            throw new IllegalArgumentException("Only TXT files are allowed");
         }
 
+        // For .txt files, "text/plain" is the most common and sufficient content type to check.
         String contentType = file.getContentType();
-        if (contentType != null && !isValidContentType(contentType)) {
-            throw new IllegalArgumentException("Invalid file content type. Expected CSV format");
+        if (contentType != null && !contentType.equals("text/plain")) {
+            log.warn("File '{}' has an unusual content type: {}. Allowing it, but expected 'text/plain'.", filename, contentType);
         }
 
         log.debug("File validation passed for: {} (size: {} bytes)", filename, file.getSize());
-    }
-
-    private boolean isValidContentType(String contentType) {
-        return contentType.equals("text/csv") ||
-                contentType.equals("application/csv") ||
-                contentType.equals("text/plain");
     }
 }

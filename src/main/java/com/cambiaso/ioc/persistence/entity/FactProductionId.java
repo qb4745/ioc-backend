@@ -15,7 +15,7 @@ import java.time.LocalDate;
 @Embeddable
 public class FactProductionId implements Serializable {
 
-    @Column(name = "id")
+    @Column(name = "id", insertable = false, updatable = false)
     private Long id;
 
     @Column(name = "fecha_contabilizacion", nullable = false)

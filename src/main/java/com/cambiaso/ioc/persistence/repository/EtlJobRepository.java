@@ -24,9 +24,11 @@ public interface EtlJobRepository extends JpaRepository<EtlJob, UUID> {
     @Query("SELECT CASE WHEN COUNT(j) > 0 THEN true ELSE false END " +
            "FROM EtlJob j " +
            "WHERE j.status IN ('INICIADO', 'PROCESANDO', 'SINCRONIZANDO') " +
+           "AND j.jobId <> :jobId " + // Exclude the current job from the check
            "AND j.minDate IS NOT NULL AND j.maxDate IS NOT NULL " +
            "AND NOT (j.maxDate < :minDate OR j.minDate > :maxDate)")
     boolean existsActiveJobInDateRange(
+            @Param("jobId") UUID jobId,
             @Param("minDate") LocalDate minDate,
             @Param("maxDate") LocalDate maxDate
     );

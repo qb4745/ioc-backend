@@ -1,6 +1,7 @@
 package com.cambiaso.ioc.service;
 
 import com.cambiaso.ioc.persistence.entity.FactProduction;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,7 +43,7 @@ class ParserServiceTest {
         System.out.println("---------------------------");
 
         // Verify first record in detail
-        FactProduction firstRecord = records.get(0);
+        FactProduction firstRecord = records.getFirst();
         assertThat(firstRecord.getId().getFechaContabilizacion()).isEqualTo(LocalDate.of(2025, 8, 30));
         assertThat(firstRecord.getHoraContabilizacion()).isEqualTo(LocalTime.of(8, 29, 15));
         assertThat(firstRecord.getNumeroLog()).isEqualTo(2922290L);
@@ -74,7 +75,7 @@ class ParserServiceTest {
     }
 
     @Test
-    //@Disabled("Disabled by default: for manual validation with large, real-world files only.")
+    @Disabled("Disabled by default: for manual validation with large, real-world files only.")
     void whenParseLargeRealFile_thenCountsEntries() throws IOException {
         // --- INSTRUCTIONS ---
         // 1. Place your large test file in the path below.

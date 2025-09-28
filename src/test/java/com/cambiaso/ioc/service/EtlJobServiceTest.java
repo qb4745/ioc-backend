@@ -163,7 +163,7 @@ class EtlJobServiceTest {
 
         @Test
         void isWindowLocked_shouldReturnFalseWhenNoActiveJobs() {
-            boolean isLocked = etlJobService.isWindowLocked(LocalDate.of(2025, 1, 1), LocalDate.of(2025, 1, 31));
+            boolean isLocked = etlJobService.isWindowLocked(UUID.randomUUID(), LocalDate.of(2025, 1, 1), LocalDate.of(2025, 1, 31));
             assertThat(isLocked).isFalse();
         }
 
@@ -174,8 +174,8 @@ class EtlJobServiceTest {
             etlJobService.updateJobDateRange(activeJob.getJobId(), LocalDate.of(2025, 1, 10), LocalDate.of(2025, 1, 20));
             etlJobService.updateJobStatus(activeJob.getJobId(), "PROCESANDO", null);
 
-            // Act & Assert: check for a new job that overlaps
-            boolean isLocked = etlJobService.isWindowLocked(LocalDate.of(2025, 1, 15), LocalDate.of(2025, 1, 25));
+            // Act & Assert: check for a new job that overlaps (must use a different jobId)
+            boolean isLocked = etlJobService.isWindowLocked(UUID.randomUUID(), LocalDate.of(2025, 1, 15), LocalDate.of(2025, 1, 25));
             assertThat(isLocked).isTrue();
         }
 
@@ -187,7 +187,7 @@ class EtlJobServiceTest {
             etlJobService.updateJobStatus(activeJob.getJobId(), "PROCESANDO", null);
 
             // Act & Assert: check for a new job in February
-            boolean isLocked = etlJobService.isWindowLocked(LocalDate.of(2025, 2, 1), LocalDate.of(2025, 2, 28));
+            boolean isLocked = etlJobService.isWindowLocked(UUID.randomUUID(), LocalDate.of(2025, 2, 1), LocalDate.of(2025, 2, 28));
             assertThat(isLocked).isFalse();
         }
 
@@ -199,7 +199,19 @@ class EtlJobServiceTest {
             etlJobService.updateJobStatus(finishedJob.getJobId(), "EXITO", "Completed");
 
             // Act & Assert: check for a new job in the same range
-            boolean isLocked = etlJobService.isWindowLocked(LocalDate.of(2025, 1, 15), LocalDate.of(2025, 1, 25));
+            boolean isLocked = etlJobService.isWindowLocked(UUID.randomUUID(), LocalDate.of(2025, 1, 15), LocalDate.of(2025, 1, 25));
+            assertThat(isLocked).isFalse();
+        }
+
+        @Test
+        void isWindowLocked_shouldNotBlockItself() {
+            // Arrange: an active job in January
+            EtlJob activeJob = etlJobService.createJob("active.csv", "active_hash", "user1");
+            etlJobService.updateJobDateRange(activeJob.getJobId(), LocalDate.of(2025, 1, 10), LocalDate.of(2025, 1, 20));
+            etlJobService.updateJobStatus(activeJob.getJobId(), "PROCESANDO", null);
+
+            // Act & Assert: check if the job blocks itself (it shouldn't)
+            boolean isLocked = etlJobService.isWindowLocked(activeJob.getJobId(), LocalDate.of(2025, 1, 15), LocalDate.of(2025, 1, 25));
             assertThat(isLocked).isFalse();
         }
     }
