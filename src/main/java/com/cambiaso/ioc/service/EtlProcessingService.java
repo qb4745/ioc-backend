@@ -170,11 +170,7 @@ public class EtlProcessingService {
             LocalDate startDate = LocalDate.of(2025, 1, 1);
             LocalDate endDate = LocalDate.of(2025, 1, 31);
 
-            // In a real implementation, you would:
-            // 1. Read file.getInputStream()
-            // 2. Parse CSV/Excel content
-            // 3. Extract actual date ranges from data
-            // 4. Create FactProduction entities from file rows
+
 
             DateRange dateRange = new DateRange(startDate, endDate);
             List<FactProduction> records = new ArrayList<>(); // Parse actual records from file content
