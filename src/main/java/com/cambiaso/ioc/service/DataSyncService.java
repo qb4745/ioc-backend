@@ -29,17 +29,19 @@ public class DataSyncService {
             factProductionRepository.deleteByFechaContabilizacionBetween(minDate, maxDate);
             log.debug("Deleted existing records in date range {} to {}", minDate, maxDate);
 
-            // Step 2: Insert the new batch of records.
-            if (!records.isEmpty()) {
-                factProductionRepository.saveAll(records);
-                // We must flush here to force Hibernate to send the INSERT statements to the DB.
-                // This will trigger any database-level constraints (like NOT NULL) within the transaction.
-                factProductionRepository.flush();
-                log.info("Successfully synced {} records for date range {} to {}",
-                        records.size(), minDate, maxDate);
-            } else {
-                log.info("No records to sync for date range {} to {}", minDate, maxDate);
-            }
+        // Step 2: Insert the new batch of records.
+        if (records != null && !records.isEmpty()) {
+            // Assign a placeholder ID to each record before saving.
+            // The database's BIGSERIAL will override this, but it satisfies the NOT NULL constraint.
+            records.forEach(record -> record.getId().setId(0L));
+            
+            factProductionRepository.saveAll(records);
+            factProductionRepository.flush();
+            log.info("Successfully synced {} records for date range {} to {}",
+                    records.size(), minDate, maxDate);
+        } else {
+            log.info("No records to sync for date range {} to {}", minDate, maxDate);
+        }
         } catch (Exception e) {
             log.error("Failed to sync data for date range {} to {}: {}",
                     minDate, maxDate, e.getMessage(), e);
