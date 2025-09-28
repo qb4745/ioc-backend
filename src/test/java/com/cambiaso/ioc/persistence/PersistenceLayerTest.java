@@ -98,13 +98,11 @@ class PersistenceLayerTest {
         DimMaquina maquina = new DimMaquina();
         maquina.setCodigoMaquina("M01");
         maquina.setNombreMaquina("Maquina 1");
-        dimMaquinaRepository.saveAndFlush(maquina); // Use saveAndFlush
+        dimMaquinaRepository.saveAndFlush(maquina);
 
-        // For composite keys with @EmbeddedId, create FactProductionId with both fields
-        FactProductionId compositeId = new FactProductionId(1L, LocalDate.of(2025, 1, 15));
-
+        // Create FactProduction with simple ID auto-generation
         FactProduction fact = new FactProduction();
-        fact.setId(compositeId);
+        fact.setFechaContabilizacion(LocalDate.of(2025, 1, 15));
         fact.setMaquina(maquina);
         fact.setNumeroLog(12345L);
         fact.setHoraContabilizacion(LocalTime.now());
@@ -114,15 +112,14 @@ class PersistenceLayerTest {
         fact.setPesoNeto(new BigDecimal("200.75"));
         fact.setTurno("A");
 
-        FactProduction savedFact = factProductionRepository.saveAndFlush(fact); // Use saveAndFlush
-        FactProductionId savedId = savedFact.getId();
+        FactProduction savedFact = factProductionRepository.saveAndFlush(fact);
 
-        // Verify that the composite key is properly saved
-        assertThat(savedId).isNotNull();
-        assertThat(savedId.getFechaContabilizacion()).isEqualTo(LocalDate.of(2025, 1, 15));
-        // Note: The id field should be populated from the maquina relationship
+        // Verify that the ID was auto-generated
+        assertThat(savedFact.getId()).isNotNull();
+        assertThat(savedFact.getId()).isPositive();
+        assertThat(savedFact.getFechaContabilizacion()).isEqualTo(LocalDate.of(2025, 1, 15));
 
-        FactProduction found = factProductionRepository.findById(savedId).orElse(null);
+        FactProduction found = factProductionRepository.findById(savedFact.getId()).orElse(null);
         assertThat(found).isNotNull();
         assertThat(found.getMaquina().getCodigoMaquina()).isEqualTo("M01");
         assertThat(found.getTurno()).isEqualTo("A");

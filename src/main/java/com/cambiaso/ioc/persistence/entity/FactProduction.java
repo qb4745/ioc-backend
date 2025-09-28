@@ -11,8 +11,13 @@ import java.time.LocalTime;
 @Table(name = "fact_production")
 public class FactProduction {
 
-    @EmbeddedId
-    private FactProductionId id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "fecha_contabilizacion", nullable = false)
+    private LocalDate fechaContabilizacion;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "maquina_fk", nullable = false)

@@ -3,7 +3,6 @@ package com.cambiaso.ioc.service;
 import com.cambiaso.ioc.persistence.entity.DimMaquina;
 import com.cambiaso.ioc.persistence.entity.DimMaquinista;
 import com.cambiaso.ioc.persistence.entity.FactProduction;
-import com.cambiaso.ioc.persistence.entity.FactProductionId;
 import com.cambiaso.ioc.persistence.repository.DimMaquinaRepository;
 import com.cambiaso.ioc.persistence.repository.DimMaquinistaRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -84,8 +83,6 @@ public class ParserService {
     private FactProduction parseDataLine(String line, Map<String, Integer> headerMap) {
         String[] fields = line.split("\\|", -1);
         FactProduction record = new FactProduction();
-        FactProductionId id = new FactProductionId();
-        record.setId(id);
 
         Map<String, BiConsumer<FactProduction, String>> setterMap = getSetterMap();
 
@@ -103,7 +100,7 @@ public class ParserService {
         });
 
         // --- VALIDATION MOVED TO THE END ---
-        if (record.getId().getFechaContabilizacion() == null) {
+        if (record.getFechaContabilizacion() == null) {
             throw new IllegalArgumentException("Fecha Contabilizacion is required and could not be parsed.");
         }
         if (record.getNumeroLog() == null) {
@@ -118,7 +115,7 @@ public class ParserService {
 
         // Claves exactas como aparecen en los diferentes tests
         map.put("Status", (r, v) -> r.setStatusOrigen(v.replace("@", "").trim()));
-        map.put("Fecha Cont.", (r, v) -> r.getId().setFechaContabilizacion(LocalDate.parse(v, DATE_FORMATTER)));
+        map.put("Fecha Cont.", (r, v) -> r.setFechaContabilizacion(LocalDate.parse(v, DATE_FORMATTER)));
         map.put("Hora", (r, v) -> r.setHoraContabilizacion(LocalTime.parse(v, TIME_FORMATTER)));
         map.put("Fecha Notif", (r, v) -> r.setFechaNotificacion(LocalDate.parse(v, DATE_FORMATTER)));
 

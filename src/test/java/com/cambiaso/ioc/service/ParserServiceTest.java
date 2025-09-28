@@ -44,7 +44,7 @@ class ParserServiceTest {
 
         // Verify first record in detail
         FactProduction firstRecord = records.getFirst();
-        assertThat(firstRecord.getId().getFechaContabilizacion()).isEqualTo(LocalDate.of(2025, 8, 30));
+        assertThat(firstRecord.getFechaContabilizacion()).isEqualTo(LocalDate.of(2025, 8, 30));
         assertThat(firstRecord.getHoraContabilizacion()).isEqualTo(LocalTime.of(8, 29, 15));
         assertThat(firstRecord.getNumeroLog()).isEqualTo(2922290L);
         assertThat(firstRecord.getMaterialSku()).isEqualTo(6760161400L);

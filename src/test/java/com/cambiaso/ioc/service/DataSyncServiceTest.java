@@ -2,7 +2,6 @@ package com.cambiaso.ioc.service;
 
 import com.cambiaso.ioc.persistence.entity.DimMaquina;
 import com.cambiaso.ioc.persistence.entity.FactProduction;
-import com.cambiaso.ioc.persistence.entity.FactProductionId;
 import com.cambiaso.ioc.persistence.repository.DimMaquinaRepository;
 import com.cambiaso.ioc.persistence.repository.FactProductionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,14 +36,12 @@ class DataSyncServiceTest {
     private DimMaquinaRepository dimMaquinaRepository;
 
     private DimMaquina maquina;
-    private long idCounter = 1L; // Counter to simulate BIGSERIAL for the test DB
 
     @BeforeEach
     void setUp() {
         // The @Transactional on the class will handle rollback for each test
         factProductionRepository.deleteAll();
         dimMaquinaRepository.deleteAll();
-        idCounter = 1L; // Reset counter for each test
 
         maquina = new DimMaquina();
         maquina.setCodigoMaquina("M-TEST");
@@ -53,11 +50,9 @@ class DataSyncServiceTest {
     }
 
     private FactProduction createFactProduction(LocalDate date) {
-        // Use the counter to generate a unique ID for the test, simulating the BIGSERIAL
-        FactProductionId id = new FactProductionId(idCounter++, date);
-
+        // Create FactProduction with simple ID auto-generation
         FactProduction fact = new FactProduction();
-        fact.setId(id);
+        fact.setFechaContabilizacion(date);
         fact.setMaquina(maquina);
         fact.setNumeroLog(1L);
         fact.setHoraContabilizacion(LocalTime.NOON);
@@ -89,7 +84,7 @@ class DataSyncServiceTest {
         // Assert: only the new record should exist
         List<FactProduction> allFacts = factProductionRepository.findAll();
         assertThat(allFacts).hasSize(1);
-        assertThat(allFacts.get(0).getId().getFechaContabilizacion()).isEqualTo(LocalDate.of(2025, 1, 15));
+        assertThat(allFacts.get(0).getFechaContabilizacion()).isEqualTo(LocalDate.of(2025, 1, 15));
     }
 
     @Test
@@ -110,7 +105,7 @@ class DataSyncServiceTest {
         // Assert: February record should remain
         List<FactProduction> allFacts = factProductionRepository.findAll();
         assertThat(allFacts).hasSize(1);
-        assertThat(allFacts.get(0).getId().getFechaContabilizacion()).isEqualTo(LocalDate.of(2025, 2, 15));
+        assertThat(allFacts.get(0).getFechaContabilizacion()).isEqualTo(LocalDate.of(2025, 2, 15));
     }
 
     @Test

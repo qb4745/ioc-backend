@@ -2,7 +2,6 @@ package com.cambiaso.ioc.service;
 
 import com.cambiaso.ioc.dto.NotificationPayload;
 import com.cambiaso.ioc.persistence.entity.FactProduction;
-import com.cambiaso.ioc.persistence.entity.FactProductionId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -58,9 +57,7 @@ class EtlProcessingServiceTest {
 
         // Create mock FactProduction records for tests
         FactProduction mockRecord = new FactProduction();
-        // Provide a dummy 'id' for the composite key in the test setup
-        FactProductionId mockId = new FactProductionId(1L, LocalDate.of(2025, 8, 30));
-        mockRecord.setId(mockId);
+        mockRecord.setFechaContabilizacion(LocalDate.of(2025, 8, 30));
         mockRecord.setNumeroLog(2922290L);
         mockRecord.setHoraContabilizacion(LocalTime.of(8, 29, 15));
         mockRecord.setFechaNotificacion(LocalDate.of(2025, 9, 1));

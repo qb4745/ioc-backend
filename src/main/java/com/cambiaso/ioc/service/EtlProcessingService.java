@@ -69,12 +69,12 @@ public class EtlProcessingService {
 
             // 2. Calculate date range from parsed data
             LocalDate minDate = parsedRecords.stream()
-                    .map(r -> r.getId().getFechaContabilizacion())
+                    .map(FactProduction::getFechaContabilizacion)
                     .min(LocalDate::compareTo)
                     .orElseThrow(() -> new FileValidationException("Could not determine minimum date from file."));
 
             LocalDate maxDate = parsedRecords.stream()
-                    .map(r -> r.getId().getFechaContabilizacion())
+                    .map(FactProduction::getFechaContabilizacion)
                     .max(LocalDate::compareTo)
                     .orElseThrow(() -> new FileValidationException("Could not determine maximum date from file."));
 
