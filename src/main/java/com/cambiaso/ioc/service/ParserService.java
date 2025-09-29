@@ -97,7 +97,11 @@ public class ParserService {
         Map<String, Integer> map = new HashMap<>();
         String[] headers = line.split("\\|", -1);
         for (int i = 0; i < headers.length; i++) {
-            map.put(headers[i].trim(), i);
+            String cleanedHeader = headers[i].trim()
+                                             .replace("á", "a").replace("é", "e")
+                                             .replace("í", "i").replace("ó", "o")
+                                             .replace("ú", "u").replace("°", "o"); // Normaliza caracteres comunes
+            map.put(cleanedHeader, i);
         }
         return map;
     }
@@ -143,16 +147,16 @@ public class ParserService {
         map.put("Fecha Cont.", (r, v) -> r.setFechaContabilizacion(LocalDate.parse(v, DATE_FORMATTER)));
         map.put("Hora", (r, v) -> r.setHoraContabilizacion(LocalTime.parse(v, TIME_FORMATTER)));
         map.put("Fecha Notif", (r, v) -> r.setFechaNotificacion(LocalDate.parse(v, DATE_FORMATTER)));
-        map.put("Número Log.", (r, v) -> r.setNumeroLog(safeParseLong(v)));
+        map.put("Numero Log.", (r, v) -> r.setNumeroLog(safeParseLong(v)));
         map.put("Documento", (r, v) -> r.setDocumento(safeParseLong(v)));
         map.put("Material", (r, v) -> r.setMaterialSku(safeParseLong(v)));
-        map.put("Descripción", FactProduction::setMaterialDescripcion);
-        map.put("N° Pallet", (r, v) -> r.setNumeroPallet(safeParseInt(v)));
+        map.put("Descripcion", FactProduction::setMaterialDescripcion);
+        map.put("No Pallet", (r, v) -> r.setNumeroPallet(safeParseInt(v)));
         map.put("Cantidad", (r, v) -> r.setCantidad(safeParseBigDecimal(v.replace(",", "."))));
         map.put("Peso Neto", (r, v) -> r.setPesoNeto(safeParseBigDecimal(v.replace(",", "."))));
         map.put("Lista", FactProduction::setLista);
-        map.put("Versión", FactProduction::setVersionProduccion);
-        map.put("Máquina", (r, v) -> r.setMaquina(findOrCreateMaquina(v, maquinaCache, newMaquinas)));
+        map.put("Version", FactProduction::setVersionProduccion);
+        map.put("Maquina", (r, v) -> r.setMaquina(findOrCreateMaquina(v, maquinaCache, newMaquinas)));
         map.put("Maquinista", (r, v) -> r.setMaquinista(findOrCreateMaquinista(v, maquinistaCache, newMaquinistas)));
         map.put("Ctro.Ctos.", (r, v) -> r.setCentroCostos(safeParseLong(v)));
         map.put("Turno", FactProduction::setTurno);
