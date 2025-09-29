@@ -12,7 +12,12 @@ import java.time.LocalTime;
 public class FactProduction {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "fact_production_seq")
+    @SequenceGenerator(
+        name = "fact_production_seq",
+        sequenceName = "fact_production_id_seq", // This should match the sequence name in your DB
+        allocationSize = 100
+    )
     @Column(name = "id")
     private Long id;
 
