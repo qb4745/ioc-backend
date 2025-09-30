@@ -5,6 +5,7 @@ import com.cambiaso.ioc.persistence.repository.FactProductionRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.DistributionSummary;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,19 +39,29 @@ public class DataSyncService {
     private int retryMaxAttempts;
     @Value("${etl.lock.test.sleep-ms:0}")
     private long lockTestSleepMs; // SOLO para pruebas: delay artificial tras tomar el lock
+    @Value("${etl.sync.test.sleep-ms:0}")
+    private long syncTestSleepMs; // SOLO tests: pausa tras delete antes de inserts
 
     // Métricas (lazily inicializadas)
     private Counter rowsDeletedCounter() { return meterRegistry.counter("etl.rows.deleted"); }
     private Counter rowsInsertedCounter() { return meterRegistry.counter("etl.rows.inserted"); }
     private Timer syncDurationTimer() { return meterRegistry.timer("etl.sync.duration"); }
+    private Counter syncAttemptCounter() { return meterRegistry.counter("etl.sync.attempts"); }
+    private Counter syncCollisionCounter() { return meterRegistry.counter("etl.sync.collisions"); }
+    private DistributionSummary windowDaysSummary() { return DistributionSummary.builder("etl.sync.window.days").publishPercentileHistogram().register(meterRegistry); }
+    private DistributionSummary batchSizeSummary() { return DistributionSummary.builder("etl.sync.records.per.batch").publishPercentileHistogram().register(meterRegistry); }
 
     public void syncWithDeleteInsert(LocalDate minDate, LocalDate maxDate, @NonNull List<FactProduction> records) {
         if (!retryUniqueEnabled) {
             try {
+                syncAttemptCounter().increment();
                 executeOnce(minDate, maxDate, records);
             } catch (DataIntegrityViolationException dive) {
                 throw new DataSyncException(buildErr(minDate, maxDate, "data integrity violation"), dive);
             } catch (RuntimeException e) {
+                if (isUniqueConstraintViolation(e)) {
+                    log.warn("Unique constraint violation (no-retry mode) for range {} to {}: {}", minDate, maxDate, e.getMessage());
+                }
                 throw new DataSyncException(buildErr(minDate, maxDate, "unexpected failure"), e);
             }
             return;
@@ -58,6 +69,7 @@ public class DataSyncService {
         int attempt = 0;
         while (true) {
             attempt++;
+            syncAttemptCounter().increment();
             try {
                 executeOnce(minDate, maxDate, records);
                 if (attempt > 1) {
@@ -65,17 +77,55 @@ public class DataSyncService {
                 }
                 return;
             } catch (DataIntegrityViolationException dive) {
-                boolean unique = isUniqueConstraintViolation(dive);
-                if (!unique || attempt >= retryMaxAttempts) {
+                if (!handleOrRetry(minDate, maxDate, attempt, dive, records)) {
                     throw new DataSyncException(buildErr(minDate, maxDate, "data integrity violation (final)"), dive);
                 }
-                long backoffMs = 200L * attempt;
-                log.warn("Unique constraint collision (attempt {} of {}). Retrying after {} ms...", attempt, retryMaxAttempts, backoffMs);
-                sleepQuiet(backoffMs);
             } catch (RuntimeException e) {
-                throw new DataSyncException(buildErr(minDate, maxDate, "unexpected failure (no retry)"), e);
+                boolean unique = isUniqueConstraintViolation(e);
+                if (unique) {
+                    if (!handleOrRetry(minDate, maxDate, attempt, e, records)) {
+                        throw new DataSyncException(buildErr(minDate, maxDate, "data integrity violation (final)"), e);
+                    }
+                } else {
+                    log.error("Non-unique runtime exception during sync (attempt {}): type={}, message={}, causes={}", attempt, e.getClass().getName(), e.getMessage(), summarizeCauses(e));
+                    throw new DataSyncException(buildErr(minDate, maxDate, "unexpected failure (no retry)"), e);
+                }
             }
         }
+    }
+
+    private String summarizeCauses(Throwable t) {
+        StringBuilder sb = new StringBuilder();
+        int depth = 0;
+        while (t != null && depth < 8) { // limit depth
+            sb.append('[').append(depth).append(':').append(t.getClass().getSimpleName()).append(':');
+            String m = t.getMessage();
+            if (m != null) sb.append(m, 0, Math.min(m.length(), 120));
+            sb.append(']');
+            t = t.getCause();
+            depth++;
+        }
+        return sb.toString();
+    }
+
+    private boolean handleOrRetry(LocalDate minDate, LocalDate maxDate, int attempt, Throwable ex, List<FactProduction> records) {
+        boolean unique = isUniqueConstraintViolation(ex);
+        if (unique) {
+            syncCollisionCounter().increment();
+        }
+        if (!unique || attempt >= retryMaxAttempts) {
+            return false; // No se reintenta
+        }
+        // Reset IDs to ensure fresh INSERTs next attempt (prevent stale entity state after rollback)
+        for (FactProduction fp : records) {
+            try {
+                if (fp.getId() != null) fp.setId(null);
+            } catch (Exception ignore) { }
+        }
+        long backoffMs = 200L * attempt;
+        log.warn("Unique constraint collision (attempt {} of {}) for range {} to {}. Retrying after {} ms... (ids reset)", attempt, retryMaxAttempts, minDate, maxDate, backoffMs);
+        sleepQuiet(backoffMs);
+        return true;
     }
 
     private void executeOnce(LocalDate minDate, LocalDate maxDate, List<FactProduction> records) {
@@ -92,11 +142,20 @@ public class DataSyncService {
                 }
                 int deleted = factProductionRepository.deleteByFechaContabilizacionBetween(minDate, maxDate);
                 rowsDeletedCounter().increment(deleted);
+                if (syncTestSleepMs > 0) { // Pausa de test para inducir colisiones concurrentes
+                    try { Thread.sleep(syncTestSleepMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                }
                 log.debug("Deleted {} existing rows in date range {} to {}", deleted, minDate, maxDate);
                 if (!records.isEmpty()) {
                     factProductionRepository.saveAll(records);
                     factProductionRepository.flush();
                     rowsInsertedCounter().increment(records.size());
+                    try {
+                        long days = java.time.Duration.between(minDate.atStartOfDay(), maxDate.plusDays(1).atStartOfDay()).toDays();
+                        if (days < 1) days = 1;
+                        windowDaysSummary().record(days);
+                        batchSizeSummary().record(records.size());
+                    } catch (Exception ignore) { }
                     log.info("Successfully synced {} records for date range {} to {}", records.size(), minDate, maxDate);
                 } else {
                     log.info("No records to sync for date range {} to {}", minDate, maxDate);
@@ -128,15 +187,43 @@ public class DataSyncService {
         return (a << 32) ^ b;
     }
 
-    private boolean isUniqueConstraintViolation(DataIntegrityViolationException e) {
+    private boolean isUniqueConstraintViolation(Throwable e) {
         Throwable cur = e;
         while (cur != null) {
             String msg = cur.getMessage();
-            if (msg != null && (msg.contains("uq_fact_prod_natural") || msg.toLowerCase().contains("unique"))) {
-                return true;
+            if (msg != null) {
+                String lower = msg.toLowerCase();
+                if (lower.contains("uq_fact_prod_natural") || lower.contains("duplicate key") || lower.contains("unique constraint") || lower.contains("violates unique constraint")) {
+                    return true;
+                }
+            }
+            try {
+                if (cur.getClass().getName().equals("org.postgresql.util.PSQLException")) {
+                    String sqlState = (String) cur.getClass().getMethod("getSQLState").invoke(cur);
+                    if ("23505".equals(sqlState)) return true;
+                }
+            } catch (Exception ignore) { }
+            if (cur instanceof java.sql.BatchUpdateException bue) {
+                if ("23505".equals(bue.getSQLState())) return true;
+                if (bue.getNextException() != null && "23505".equals(bue.getNextException().getSQLState())) return true;
+            }
+            if (cur.getClass().getName().equals("org.hibernate.exception.ConstraintViolationException")) {
+                try {
+                    Object sqlEx = cur.getClass().getMethod("getSQLException").invoke(cur);
+                    if (sqlEx instanceof java.sql.SQLException sql) {
+                        if ("23505".equals(sql.getSQLState())) return true;
+                    }
+                } catch (Exception ignore) { }
             }
             cur = cur.getCause();
         }
+        // Fallback: scan stack trace text for SQLState 23505
+        try {
+            java.io.StringWriter sw = new java.io.StringWriter();
+            java.io.PrintWriter pw = new java.io.PrintWriter(sw);
+            e.printStackTrace(pw);
+            if (sw.toString().contains("23505")) return true;
+        } catch (Exception ignore) { }
         return false;
     }
 

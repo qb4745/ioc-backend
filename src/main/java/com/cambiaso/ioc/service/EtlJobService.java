@@ -2,8 +2,11 @@ package com.cambiaso.ioc.service;
 
 import com.cambiaso.ioc.persistence.entity.EtlJob;
 import com.cambiaso.ioc.persistence.repository.EtlJobRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +22,8 @@ import java.util.UUID;
 public class EtlJobService {
 
     private final EtlJobRepository etlJobRepository;
+    @Autowired(required = false)
+    private MeterRegistry meterRegistry;
 
     public EtlJob createJob(String fileName, String fileHash, String userId) {
         EtlJob job = new EtlJob();
@@ -49,9 +54,19 @@ public class EtlJobService {
         job.setStatus(status);
         job.setDetails(details);
 
-        // Set finished time for completion/failure statuses
-        if ("EXITO".equals(status) || "FALLO".equals(status)) {
+        boolean terminal = "EXITO".equals(status) || "FALLO".equals(status);
+        if (terminal) {
             job.setFinishedAt(OffsetDateTime.now());
+            if (meterRegistry != null && job.getCreatedAt() != null) {
+                try {
+                    long millis = java.time.Duration.between(job.getCreatedAt(), job.getFinishedAt()).toMillis();
+                    Timer.builder("etl.job.total.duration")
+                            .tag("status", status)
+                            .publishPercentileHistogram()
+                            .register(meterRegistry)
+                            .record(java.time.Duration.ofMillis(Math.max(millis,1)));
+                } catch (Exception ignore) { }
+            }
         }
 
         etlJobRepository.save(job);

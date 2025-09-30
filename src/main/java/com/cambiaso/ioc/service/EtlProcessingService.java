@@ -7,6 +7,7 @@ import com.cambiaso.ioc.persistence.entity.FactProduction;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
@@ -78,11 +79,21 @@ public class EtlProcessingService {
                     .max(LocalDate::compareTo)
                     .orElseThrow(() -> new FileValidationException("Could not determine maximum date from file."));
 
+            // Validación defensiva: todas las fechas deben estar dentro del rango calculado
+            boolean outOfRange = parsedRecords.stream().anyMatch(r -> r.getFechaContabilizacion().isBefore(minDate) || r.getFechaContabilizacion().isAfter(maxDate));
+            if (outOfRange) {
+                throw new FileValidationException("Parsed records contain dates outside inferred range: " + minDate + " to " + maxDate);
+            }
+
             // 3. Update job with date range and check for conflicts
             log.debug("Job {}: Checking for window lock for date range {} to {}.", jobId, minDate, maxDate);
             etlJobService.updateJobDateRange(jobId, minDate, maxDate);
 
             if (etlJobService.isWindowLocked(jobId, minDate, maxDate)) {
+                // Métrica de conflicto de ventana
+                if (meterRegistry != null) {
+                    Counter.builder("etl.window.conflicts").register(meterRegistry).increment();
+                }
                 throw new JobConflictException("Another ETL job is processing this date range.");
             }
 
@@ -234,9 +245,20 @@ public class EtlProcessingService {
         }
     }
 
+    private DistributionSummary fileSizeDist() {
+        if (meterRegistry == null) return null;
+        return DistributionSummary.builder("etl.file.size.bytes")
+                .baseUnit("bytes")
+                .publishPercentileHistogram()
+                .publishPercentiles(0.5,0.9,0.99)
+                .register(meterRegistry);
+    }
+
     private void recordFileMetrics(MultipartFile file) {
         if (meterRegistry != null) {
             meterRegistry.summary("etl.file.size").record(file.getSize());
+            DistributionSummary ds = fileSizeDist();
+            if (ds != null) ds.record(file.getSize());
             Counter.builder("etl.files.processed")
                     .tag("type", getFileExtension(file.getOriginalFilename()))
                     .register(meterRegistry)

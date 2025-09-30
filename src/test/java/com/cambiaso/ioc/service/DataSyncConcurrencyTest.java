@@ -6,6 +6,7 @@ import com.cambiaso.ioc.persistence.entity.FactProduction;
 import com.cambiaso.ioc.persistence.repository.DimMaquinaRepository;
 import com.cambiaso.ioc.persistence.repository.DimMaquinistaRepository;
 import com.cambiaso.ioc.persistence.repository.FactProductionRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -71,6 +72,8 @@ class DataSyncConcurrencyTest {
     private FactProductionRepository factProductionRepository;
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -175,6 +178,75 @@ class DataSyncConcurrencyTest {
                 .map(FactProduction::getNumeroLog)
                 .sorted().toList();
         assertThat(logs).containsExactlyInAnyOrder(200L, 201L);
+    }
+
+    @Test
+    @DisplayName("Unique constraint retry: concurrent inserts cause collision and reattempt succeeds")
+    void uniqueConstraintRetryOnConcurrentInsert() throws Exception {
+        // Preconditions: retry enabled via dynamic properties, lock disabled to allow overlap
+        disableLock();
+        enableSyncTestSleep(300L); // induce overlap after delete before inserts
+
+        LocalDate date = LocalDate.of(2025,9,1);
+        List<FactProduction> batch = List.of(build(date, 1000L), build(date,1001L), build(date,1002L));
+
+        double attemptsBefore = meterRegistry.counter("etl.sync.attempts").count();
+        double collisionsBefore = meterRegistry.counter("etl.sync.collisions").count();
+
+        CountDownLatch startGate = new CountDownLatch(1);
+        CountDownLatch doneGate = new CountDownLatch(2);
+        ExecutorService exec = Executors.newFixedThreadPool(2);
+        List<Throwable> errors = Collections.synchronizedList(new ArrayList<>());
+
+        Runnable task = () -> {
+            await(startGate);
+            try {
+                dataSyncService.syncWithDeleteInsert(date, date, batch.stream().map(fp -> build(date, fp.getNumeroLog())).toList());
+            } catch (Throwable t) {
+                errors.add(t);
+            } finally {
+                doneGate.countDown();
+            }
+        };
+
+        exec.submit(task);
+        exec.submit(task);
+
+        startGate.countDown();
+        boolean finished = doneGate.await(30, TimeUnit.SECONDS);
+        exec.shutdownNow();
+
+        assertThat(finished).as("Both threads finished within timeout").isTrue();
+
+        // Allow at most one propagated DataSyncException (classification edge); ensure at least one success
+        long failures = errors.stream().filter(Objects::nonNull).count();
+        assertThat(failures).as("Ningún hilo debe propagar fallo tras reintentos (retry debe absorber colisiones)").isEqualTo(0);
+
+        // Validate final data set: exactly the batch size unique logical rows
+        List<FactProduction> all = factProductionRepository.findAll();
+        List<Long> logs = all.stream().filter(fp -> fp.getFechaContabilizacion().equals(date))
+                .map(FactProduction::getNumeroLog).sorted().toList();
+        assertThat(logs).containsExactly(1000L,1001L,1002L);
+        assertThat(all).hasSize(3);
+
+        double attemptsAfter = meterRegistry.counter("etl.sync.attempts").count();
+        double collisionsAfter = meterRegistry.counter("etl.sync.collisions").count();
+
+        double attemptDelta = attemptsAfter - attemptsBefore;
+        double collisionDelta = collisionsAfter - collisionsBefore;
+
+        assertThat(attemptDelta).as("Debe haber al menos 3 intentos totales (colisión inicial + reintentos)").isGreaterThanOrEqualTo(3.0);
+        assertThat(collisionDelta).as("Al menos una colisión UNIQUE registrada").isGreaterThanOrEqualTo(1.0);
+    }
+
+    private void enableSyncTestSleep(long ms) {
+        try {
+            java.lang.reflect.Field f = DataSyncService.class.getDeclaredField("syncTestSleepMs");
+            f.setAccessible(true);
+            f.setLong(dataSyncService, ms);
+        } catch (Exception e) {
+            throw new IllegalStateException("No se pudo configurar syncTestSleepMs via reflexión", e);
+        }
     }
 
     private void await(CountDownLatch latch) {

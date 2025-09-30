@@ -7,12 +7,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface EtlJobRepository extends JpaRepository<EtlJob, UUID> {
+public interface EtlJobRepository extends JpaRepository<EtlJob, UUID>, EtlJobRepositoryCustom {
     Optional<EtlJob> findByFileHash(String fileHash);
 
     boolean existsByStatusInAndMaxDateGreaterThanEqualAndMinDateLessThanEqual(
@@ -32,4 +33,12 @@ public interface EtlJobRepository extends JpaRepository<EtlJob, UUID> {
             @Param("minDate") LocalDate minDate,
             @Param("maxDate") LocalDate maxDate
     );
+
+    long countByStatusIn(List<String> statuses);
+
+    @Query("SELECT COUNT(j) FROM EtlJob j WHERE j.status IN :statuses AND j.finishedAt IS NULL AND j.createdAt < :cutoff")
+    long countStuck(@Param("statuses") List<String> statuses, @Param("cutoff") OffsetDateTime cutoff);
+
+    // markStuckAsFailed ahora se implementa vía repositorio custom para evitar incompatibilidad JPQL con OffsetDateTime
+    int markStuckAsFailed(OffsetDateTime cutoff);
 }

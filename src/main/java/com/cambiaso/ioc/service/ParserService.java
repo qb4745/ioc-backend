@@ -21,6 +21,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -47,7 +48,10 @@ public class ParserService {
     private Counter rowsParsedCounter() { return meterRegistry.counter("etl.rows.parsed"); }
     private Counter rowsDuplicateSkippedCounter() { return meterRegistry.counter("etl.rows.duplicate.skipped"); }
     private Counter malformedLinesCounter() { return meterRegistry.counter("etl.rows.malformed"); }
+    private Counter dimNewMaquinaCounter() { return meterRegistry.counter("etl.dim.new.maquina"); }
+    private Counter dimNewMaquinistaCounter() { return meterRegistry.counter("etl.dim.new.maquinista"); }
     private Timer parseDurationTimer() { return meterRegistry.timer("etl.parse.duration"); }
+    private final AtomicReference<Double> lastDuplicateRatio = new AtomicReference<>(0.0);
 
     public List<FactProduction> parse(InputStream inputStream) throws IOException {
         long startNanos = System.nanoTime();
@@ -112,23 +116,30 @@ public class ParserService {
                     records.add(record);
                 } catch (Exception e) {
                     malformedLines++; malformedLinesCounter().increment();
-                    log.warn("Skipping malformed line #{}: '{}'. Reason: {}", lineNumber, line, e.getMessage());
+                    log.warn("Skipping malformed line #{}: '{}'. Reason: {}", lineNumber, sanitizeForLog(line), shortMsg(e));
                 }
             }
         } finally {
             long elapsed = System.nanoTime() - startNanos;
             parseDurationTimer().record(Duration.ofNanos(elapsed));
-            log.info("Parse summary: linesRead={}, recordsParsedValid={}, duplicatesSkipped(early+late)={}, malformedLines={}, newMaquinas={}, newMaquinistas={}, finalRecords={}, elapsedMs={}",
-                    lineNumber, logicalParsed, duplicatesSkipped, malformedLines, newMaquinas.size(), newMaquinistas.size(), records.size(), elapsed / 1_000_000);
+            double ratio = (logicalParsed + duplicatesSkipped) == 0 ? 0.0 : ((double) duplicatesSkipped / (logicalParsed + duplicatesSkipped));
+            lastDuplicateRatio.set(ratio);
+            if (meterRegistry != null) {
+                meterRegistry.gauge("etl.rows.duplicate.ratio", lastDuplicateRatio, r -> r.get());
+            }
+            log.info("Parse summary: linesRead={}, recordsParsedValid={}, duplicatesSkipped(early+late)={}, malformedLines={}, newMaquinas={}, newMaquinistas={}, finalRecords={}, duplicateRatio={}, elapsedMs={}",
+                    lineNumber, logicalParsed, duplicatesSkipped, malformedLines, newMaquinas.size(), newMaquinistas.size(), records.size(), String.format(java.util.Locale.ROOT, "%.5f", lastDuplicateRatio.get()), elapsed / 1_000_000);
         }
 
         // Persist new dimensions once
         if (!newMaquinas.isEmpty()) {
             maquinaRepository.saveAll(newMaquinas);
+            dimNewMaquinaCounter().increment(newMaquinas.size());
             log.info("Saved {} new DimMaquina entities.", newMaquinas.size());
         }
         if (!newMaquinistas.isEmpty()) {
             maquinistaRepository.saveAll(newMaquinistas);
+            dimNewMaquinistaCounter().increment(newMaquinistas.size());
             log.info("Saved {} new DimMaquinista entities.", newMaquinistas.size());
         }
         return records;
@@ -305,4 +316,19 @@ public class ParserService {
         }
         return canonicalKey(fecha, rawMaquina, maquinista, numeroLog);
     }
+
+    private String sanitizeForLog(String line) {
+        if (line == null) return "";
+        String trimmed = line.replaceAll("[\r\n]", " ");
+        // Reemplazar caracteres de control no imprimibles con '?'
+        StringBuilder sb = new StringBuilder();
+        int limit = Math.min(trimmed.length(), 200);
+        for (int i = 0; i < limit; i++) {
+            char c = trimmed.charAt(i);
+            if (Character.isISOControl(c) && !Character.isWhitespace(c)) sb.append('?'); else sb.append(c);
+        }
+        if (trimmed.length() > 200) sb.append("…");
+        return sb.toString();
+    }
+    private String shortMsg(Throwable t) { return t == null ? "" : (t.getMessage() != null ? t.getMessage() : t.getClass().getSimpleName()); }
 }
