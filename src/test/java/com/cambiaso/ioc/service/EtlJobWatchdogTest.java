@@ -77,8 +77,8 @@ class EtlJobWatchdogTest {
     @DisplayName("Watchdog termina jobs INICIADO antiguos e incrementa counter")
     void watchdogTerminatesStuckJobs() {
         // Crear 2 jobs: uno quedará INICIADO viejo, otro EXITO (no debe tocarse)
-        EtlJob j1 = etlJobService.createJob("file1.csv","hash1","u1");
-        EtlJob j2 = etlJobService.createJob("file2.csv","hash2","u2");
+        EtlJob j1 = etlJobService.createJob("file1.txt","hash1","u1");
+        EtlJob j2 = etlJobService.createJob("file2.txt","hash2","u2");
         etlJobService.updateJobStatus(j2.getJobId(), "EXITO", "done");
         // Backdate created_at via SQL (created_at es updatable=false en JPA)
         jdbcTemplate.update("UPDATE etl_jobs SET created_at = DATEADD('MINUTE', -5, CURRENT_TIMESTAMP) WHERE job_id = ?", j1.getJobId());
@@ -103,7 +103,7 @@ class EtlJobWatchdogTest {
     @Transactional
     @DisplayName("Timer de duración de job se registra al finalizar")
     void jobDurationMetricRecorded() throws InterruptedException {
-        EtlJob job = etlJobService.createJob("file3.csv","hash3","u3");
+        EtlJob job = etlJobService.createJob("file3.txt","hash3","u3");
         Thread.sleep(5); // micro delay
         etlJobService.updateJobStatus(job.getJobId(), "EXITO", "ok");
 

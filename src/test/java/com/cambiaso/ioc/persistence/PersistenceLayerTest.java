@@ -79,7 +79,7 @@ class PersistenceLayerTest {
 
         QuarantinedRecord record = new QuarantinedRecord();
         record.setEtlJob(job);
-        record.setFileName("error.csv");
+        record.setFileName("error.txt");
         record.setLineNumber(42);
         record.setRawLine("invalid,data,format");
         record.setErrorDetails("Invalid date format");

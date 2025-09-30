@@ -7,9 +7,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -19,9 +19,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
+@DataJpaTest
+@Import(EtlJobService.class)
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("EtlJobService Tests")
 class EtlJobServiceTest {
 
@@ -43,12 +43,12 @@ class EtlJobServiceTest {
         @Test
         @DisplayName("Should create job with initial status")
         void createJob_shouldCreateJobWithInitialStatus() {
-            EtlJob job = etlJobService.createJob("test.csv", "hash123", "user1");
+            EtlJob job = etlJobService.createJob("test.txt", "hash123", "user1");
 
             assertThat(job).isNotNull();
             assertThat(job.getJobId()).isNotNull();
             assertThat(job.getStatus()).isEqualTo("INICIADO");
-            assertThat(job.getFileName()).isEqualTo("test.csv");
+            assertThat(job.getFileName()).isEqualTo("test.txt");
             assertThat(job.getFileHash()).isEqualTo("hash123");
             assertThat(job.getUserId()).isEqualTo("user1");
             assertThat(job.getCreatedAt()).isNotNull();
@@ -58,13 +58,13 @@ class EtlJobServiceTest {
         @Test
         @DisplayName("Should find job by file hash")
         void findByFileHash_shouldReturnJobIfExists() {
-            EtlJob created = etlJobService.createJob("test.csv", "hash123", "user1");
+            EtlJob created = etlJobService.createJob("test.txt", "hash123", "user1");
 
             Optional<EtlJob> found = etlJobService.findByFileHash("hash123");
 
             assertThat(found).isPresent();
             assertThat(found.get().getJobId()).isEqualTo(created.getJobId());
-            assertThat(found.get().getFileName()).isEqualTo("test.csv");
+            assertThat(found.get().getFileName()).isEqualTo("test.txt");
         }
 
         @Test
@@ -83,7 +83,7 @@ class EtlJobServiceTest {
         @Test
         @DisplayName("Should update job status and details")
         void updateJobStatus_shouldUpdateStatusAndDetails() {
-            EtlJob job = etlJobService.createJob("test.csv", "hash123", "user1");
+            EtlJob job = etlJobService.createJob("test.txt", "hash123", "user1");
 
             etlJobService.updateJobStatus(job.getJobId(), "PROCESANDO", "Processing file");
 
@@ -96,7 +96,7 @@ class EtlJobServiceTest {
         @Test
         @DisplayName("Should set finished time for completion statuses")
         void updateJobStatus_shouldSetFinishedTimeForCompletionStatuses() {
-            EtlJob job = etlJobService.createJob("test.csv", "hash123", "user1");
+            EtlJob job = etlJobService.createJob("test.txt", "hash123", "user1");
             OffsetDateTime beforeUpdate = OffsetDateTime.now();
 
             etlJobService.updateJobStatus(job.getJobId(), "EXITO", "Completed successfully");
@@ -111,7 +111,7 @@ class EtlJobServiceTest {
         @Test
         @DisplayName("Should set finished time for failure statuses")
         void updateJobStatus_shouldSetFinishedTimeForFailureStatuses() {
-            EtlJob job = etlJobService.createJob("test.csv", "hash123", "user1");
+            EtlJob job = etlJobService.createJob("test.txt", "hash123", "user1");
 
             etlJobService.updateJobStatus(job.getJobId(), "FALLO", "Process failed");
 
@@ -137,7 +137,7 @@ class EtlJobServiceTest {
         @Test
         @DisplayName("Should update job date range")
         void updateJobDateRange_shouldUpdateDates() {
-            EtlJob job = etlJobService.createJob("test.csv", "hash123", "user1");
+            EtlJob job = etlJobService.createJob("test.txt", "hash123", "user1");
             LocalDate minDate = LocalDate.of(2025, 1, 1);
             LocalDate maxDate = LocalDate.of(2025, 1, 31);
 
@@ -170,7 +170,7 @@ class EtlJobServiceTest {
         @Test
         void isWindowLocked_shouldReturnTrueForOverlappingDateRange() {
             // Arrange: an active job in January
-            EtlJob activeJob = etlJobService.createJob("active.csv", "active_hash", "user1");
+            EtlJob activeJob = etlJobService.createJob("active.txt", "active_hash", "user1");
             etlJobService.updateJobDateRange(activeJob.getJobId(), LocalDate.of(2025, 1, 10), LocalDate.of(2025, 1, 20));
             etlJobService.updateJobStatus(activeJob.getJobId(), "PROCESANDO", null);
 
@@ -182,7 +182,7 @@ class EtlJobServiceTest {
         @Test
         void isWindowLocked_shouldReturnFalseForNonOverlappingDateRange() {
             // Arrange: an active job in January
-            EtlJob activeJob = etlJobService.createJob("active.csv", "active_hash", "user1");
+            EtlJob activeJob = etlJobService.createJob("active.txt", "active_hash", "user1");
             etlJobService.updateJobDateRange(activeJob.getJobId(), LocalDate.of(2025, 1, 10), LocalDate.of(2025, 1, 20));
             etlJobService.updateJobStatus(activeJob.getJobId(), "PROCESANDO", null);
 
@@ -194,7 +194,7 @@ class EtlJobServiceTest {
         @Test
         void isWindowLocked_shouldReturnFalseForJobWithFinishedStatus() {
             // Arrange: a finished job in January
-            EtlJob finishedJob = etlJobService.createJob("finished.csv", "finished_hash", "user1");
+            EtlJob finishedJob = etlJobService.createJob("finished.txt", "finished_hash", "user1");
             etlJobService.updateJobDateRange(finishedJob.getJobId(), LocalDate.of(2025, 1, 10), LocalDate.of(2025, 1, 20));
             etlJobService.updateJobStatus(finishedJob.getJobId(), "EXITO", "Completed");
 
@@ -206,7 +206,7 @@ class EtlJobServiceTest {
         @Test
         void isWindowLocked_shouldNotBlockItself() {
             // Arrange: an active job in January
-            EtlJob activeJob = etlJobService.createJob("active.csv", "active_hash", "user1");
+            EtlJob activeJob = etlJobService.createJob("active.txt", "active_hash", "user1");
             etlJobService.updateJobDateRange(activeJob.getJobId(), LocalDate.of(2025, 1, 10), LocalDate.of(2025, 1, 20));
             etlJobService.updateJobStatus(activeJob.getJobId(), "PROCESANDO", null);
 

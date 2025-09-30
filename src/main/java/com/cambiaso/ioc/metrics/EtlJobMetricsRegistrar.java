@@ -10,6 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -24,12 +27,26 @@ public class EtlJobMetricsRegistrar {
     private final EtlJobRepository etlJobRepository;
     private final MeterRegistry meterRegistry;
     private final JdbcTemplate jdbcTemplate;
+    private final DataSource dataSource;
 
     @Value("${etl.jobs.stuck.threshold-minutes:30}")
     private long stuckThresholdMinutes;
 
     private static final List<String> ACTIVE_STATUSES = List.of("INICIADO","PROCESANDO","SINCRONIZANDO");
     private static final String UNIQUE_INDEX_SQL = "SELECT 1 FROM pg_indexes WHERE tablename='fact_production' AND indexname='uq_fact_prod_natural'";
+
+    private volatile Boolean postgres; // cache
+
+    private boolean isPostgres() {
+        if (postgres != null) return postgres;
+        try (Connection c = dataSource.getConnection()) {
+            DatabaseMetaData md = c.getMetaData();
+            postgres = md.getDatabaseProductName().toLowerCase().contains("postgres");
+        } catch (Exception e) {
+            postgres = false;
+        }
+        return postgres;
+    }
 
     @PostConstruct
     void registerGauges() {
@@ -43,9 +60,9 @@ public class EtlJobMetricsRegistrar {
                     .description("Number of potentially stuck ETL jobs older than threshold minutes without finished_at")
                     .register(meterRegistry);
 
-            // Gauge del índice UNIQUE (implementación directa para evitar dependencia circular)
-            Gauge.builder("etl.unique.index.present", this::checkUniqueIndexPresent)
-                    .description("UNIQUE index presence (1=present, 0=missing)")
+            // Gauge del índice UNIQUE (implementación tolerante a otros motores)
+            Gauge.builder("etl.unique.index.present", () -> uniqueIndexPresenceSafe())
+                    .description("UNIQUE index presence (1=present, 0=missing, skips non-Postgres)")
                     .register(meterRegistry);
 
             log.info("Registered gauges: etl.jobs.active, etl.jobs.stuck (threshold={}m), etl.unique.index.present", stuckThresholdMinutes);
@@ -54,14 +71,13 @@ public class EtlJobMetricsRegistrar {
         }
     }
 
-    /**
-     * Verifica si el índice UNIQUE está presente
-     */
-    private double checkUniqueIndexPresent() {
+    private double uniqueIndexPresenceSafe() {
+        if (!isPostgres()) return 0.0; // En H2 / otros: no aplica, devolvemos 0 sin error
         try {
             return jdbcTemplate.queryForList(UNIQUE_INDEX_SQL).isEmpty() ? 0.0 : 1.0;
         } catch (Exception e) {
-            return 0.0; // Considera fallo de query como índice ausente
+            // No propagar: métrica debe ser best-effort
+            return 0.0;
         }
     }
 }
