@@ -16,5 +16,5 @@ public interface FactProductionRepository extends JpaRepository<FactProduction, 
     @Transactional
     @Modifying
     @Query("DELETE FROM FactProduction fp WHERE fp.fechaContabilizacion BETWEEN :minDate AND :maxDate")
-    void deleteByFechaContabilizacionBetween(@Param("minDate") LocalDate minDate, @Param("maxDate") LocalDate maxDate);
+    int deleteByFechaContabilizacionBetween(@Param("minDate") LocalDate minDate, @Param("maxDate") LocalDate maxDate);
 }

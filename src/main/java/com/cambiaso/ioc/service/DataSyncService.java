@@ -2,12 +2,19 @@ package com.cambiaso.ioc.service;
 
 import com.cambiaso.ioc.persistence.entity.FactProduction;
 import com.cambiaso.ioc.persistence.repository.FactProductionRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.lang.NonNull;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -17,42 +24,131 @@ import java.util.List;
 public class DataSyncService {
 
     private final FactProductionRepository factProductionRepository;
+    private final EntityManager entityManager; // Para advisory lock
+    private final MeterRegistry meterRegistry;
+
+    @Value("${etl.lock.enabled:true}")
+    private boolean etlLockEnabled;
+    @Value("${etl.retry.unique.enabled:false}")
+    private boolean retryUniqueEnabled;
+    @Value("${etl.retry.unique.max-attempts:3}")
+    private int retryMaxAttempts;
+
+    // Métricas (lazily inicializadas)
+    private Counter rowsDeletedCounter() { return meterRegistry.counter("etl.rows.deleted"); }
+    private Counter rowsInsertedCounter() { return meterRegistry.counter("etl.rows.inserted"); }
+    private Timer syncDurationTimer() { return meterRegistry.timer("etl.sync.duration"); }
+
+    public void syncWithDeleteInsert(LocalDate minDate, LocalDate maxDate, @NonNull List<FactProduction> records) {
+        if (!retryUniqueEnabled) {
+            try {
+                doSyncWithDeleteInsertTransactional(minDate, maxDate, records);
+            } catch (DataIntegrityViolationException dive) {
+                throw new DataSyncException(buildErr(minDate, maxDate, "data integrity violation"), dive);
+            } catch (RuntimeException e) {
+                throw new DataSyncException(buildErr(minDate, maxDate, "unexpected failure"), e);
+            }
+            return;
+        }
+        int attempt = 0;
+        while (true) {
+            try {
+                attempt++;
+                doSyncWithDeleteInsertTransactional(minDate, maxDate, records);
+                if (attempt > 1) {
+                    log.info("ETL sync succeeded after {} attempt(s) (unique collision retry mode)", attempt);
+                }
+                return;
+            } catch (DataIntegrityViolationException dive) {
+                boolean unique = isUniqueConstraintViolation(dive);
+                if (!unique || attempt >= retryMaxAttempts) {
+                    throw new DataSyncException(buildErr(minDate, maxDate, "data integrity violation (final)"), dive);
+                }
+                long backoffMs = 200L * attempt;
+                log.warn("Unique constraint collision (attempt {} of {}). Retrying after {} ms...", attempt, retryMaxAttempts, backoffMs);
+                sleepQuiet(backoffMs);
+            } catch (RuntimeException e) {
+                throw new DataSyncException(buildErr(minDate, maxDate, "unexpected failure (no retry)"), e);
+            }
+        }
+    }
 
     @Transactional
-    public void syncWithDeleteInsert(LocalDate minDate, LocalDate maxDate, @NonNull List<FactProduction> records) {
+    protected void doSyncWithDeleteInsertTransactional(LocalDate minDate, LocalDate maxDate, @NonNull List<FactProduction> records) {
+        long startNanos = System.nanoTime();
         try {
-            log.info("Starting data sync for date range {} to {} with {} records",
-                    minDate, maxDate, records.size());
+            log.info("Starting data sync for date range {} to {} with {} records (lockEnabled={}, retryUnique={})", minDate, maxDate, records.size(), etlLockEnabled, retryUniqueEnabled);
 
-            // Step 1: Delete existing records in the date range.
-            // This operation will be rolled back if the subsequent insertion fails.
-            factProductionRepository.deleteByFechaContabilizacionBetween(minDate, maxDate);
-            log.debug("Deleted existing records in date range {} to {}", minDate, maxDate);
+            if (etlLockEnabled) {
+                tryAcquireAdvisoryLock(minDate, maxDate);
+            }
+
+            // Step 1: Delete existing records in the date range (idempotencia por ventana).
+            int beforeDeleteCount = records.size(); // solo para referencia en logging
+            int deletedRows = factProductionRepository.deleteByFechaContabilizacionBetween(minDate, maxDate);
+            rowsDeletedCounter().increment(deletedRows);
+            log.debug("Deleted {} existing rows in date range {} to {}", deletedRows, minDate, maxDate);
 
             // Step 2: Insert the new batch of records.
-            if (records != null && !records.isEmpty()) {
-                // No need to set ID manually - PostgreSQL BIGSERIAL will auto-generate it
-                // The @GeneratedValue(strategy = GenerationType.IDENTITY) handles this automatically
+            if (!records.isEmpty()) {
+                // IDs generados vía estrategia SEQUENCE (@GeneratedValue SEQUENCE) – NO BIGSERIAL / IDENTITY.
                 factProductionRepository.saveAll(records);
                 factProductionRepository.flush();
-                log.info("Successfully synced {} records for date range {} to {}",
-                        records.size(), minDate, maxDate);
+                rowsInsertedCounter().increment(records.size());
+                log.info("Successfully synced {} records for date range {} to {}", records.size(), minDate, maxDate);
             } else {
                 log.info("No records to sync for date range {} to {}", minDate, maxDate);
             }
-        } catch (Exception e) {
-            log.error("Failed to sync data for date range {} to {}: {}",
-                    minDate, maxDate, e.getMessage(), e);
-            throw new DataSyncException("Failed to sync data for date range " + minDate + " to " + maxDate, e);
+        } finally {
+            long elapsed = System.nanoTime() - startNanos;
+            syncDurationTimer().record(Duration.ofNanos(elapsed));
         }
+    }
+
+    private void tryAcquireAdvisoryLock(LocalDate minDate, LocalDate maxDate) {
+        try {
+            long lockKey = computeLockKey(minDate, maxDate);
+            entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(?);")
+                    .setParameter(1, lockKey)
+                    .getSingleResult();
+            log.debug("Acquired advisory lock key={} for range {} to {}", lockKey, minDate, maxDate);
+        } catch (RuntimeException ex) {
+            // H2 u otras BDs no soportan la función; continuar sin lock
+            log.trace("Advisory lock skipped (function unavailable): {}", ex.getMessage());
+        }
+    }
+
+    private long computeLockKey(LocalDate minDate, LocalDate maxDate) {
+        // Combina epochDay para generar llave determinística en 64 bits.
+        long a = minDate != null ? minDate.toEpochDay() : 0L;
+        long b = maxDate != null ? maxDate.toEpochDay() : 0L;
+        return (a << 32) ^ b;
+    }
+
+    private boolean isUniqueConstraintViolation(DataIntegrityViolationException e) {
+        Throwable cur = e;
+        while (cur != null) {
+            String msg = cur.getMessage();
+            if (msg != null && (msg.contains("uq_fact_prod_natural") || msg.toLowerCase().contains("unique"))) {
+                return true;
+            }
+            cur = cur.getCause();
+        }
+        return false;
+    }
+
+    private void sleepQuiet(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+    }
+
+    private String buildErr(LocalDate minDate, LocalDate maxDate, String reason) {
+        return "Failed to sync date range " + minDate + " to " + maxDate + " (" + reason + ")";
     }
 
     /**
      * Custom exception for data synchronization failures
      */
     public static class DataSyncException extends RuntimeException {
-        public DataSyncException(String message, Throwable cause) {
-            super(message, cause);
-        }
+        public DataSyncException(String message, Throwable cause) { super(message, cause); }
     }
 }
