@@ -46,6 +46,7 @@ public class ParserService {
     // Metrics helpers
     private Counter rowsParsedCounter() { return meterRegistry.counter("etl.rows.parsed"); }
     private Counter rowsDuplicateSkippedCounter() { return meterRegistry.counter("etl.rows.duplicate.skipped"); }
+    private Counter malformedLinesCounter() { return meterRegistry.counter("etl.rows.malformed"); }
     private Timer parseDurationTimer() { return meterRegistry.timer("etl.parse.duration"); }
 
     public List<FactProduction> parse(InputStream inputStream) throws IOException {
@@ -54,8 +55,9 @@ public class ParserService {
         Map<String, Integer> headerMap = new HashMap<>();
         boolean headerFound = false;
         int duplicatesSkipped = 0;
-        int logicalParsed = 0;
+        int logicalParsed = 0; // registros válidos (post validación)
         int lineNumber = 0;
+        int malformedLines = 0;
 
         // Preload dimension caches
         Map<String, DimMaquina> maquinaCache = maquinaRepository.findAll().stream()
@@ -76,36 +78,48 @@ public class ParserService {
                 if (line.contains("Fecha Cont.")) { headerFound = true; headerMap = parseHeader(line); continue; }
                 if (!headerFound || line.trim().startsWith("-") || line.trim().isEmpty() || line.contains("Cantidad")) { continue; }
 
-                // EARLY DEDUP (barato): construir clave mínima sin instanciar FactProduction completo
                 String earlyKey = null;
                 try {
-                    earlyKey = buildEarlyKey(line, headerMap);
-                } catch (Exception ignored) { /* fallback a parse completo para logging detallado */ }
+                    earlyKey = buildEarlyKeyCanonical(line, headerMap); // normalizado
+                } catch (Exception ex) {
+                    if (log.isTraceEnabled()) log.trace("Early key build failed line #{}: {}", lineNumber, ex.getMessage());
+                }
                 if (earlyKey != null && seenKeys.contains(earlyKey)) {
                     duplicatesSkipped++; rowsDuplicateSkippedCounter().increment();
                     if (log.isTraceEnabled()) log.trace("Early skip duplicate logical fact key={}", earlyKey);
-                    continue; // evitar parse costoso
+                    continue;
                 }
 
                 try {
                     FactProduction record = parseDataLine(line, headerMap, setterMap);
-                    logicalParsed++; rowsParsedCounter().increment();
+                    if (!isRecordValid(record)) {
+                        malformedLines++; malformedLinesCounter().increment();
+                        if (log.isDebugEnabled()) log.debug("Skipping invalid record line #{} (missing required fields)", lineNumber);
+                        continue; // no cuenta como parsed
+                    }
                     String key = earlyKey != null ? earlyKey : buildDedupKey(record);
-                    if (!seenKeys.add(key)) { // raro: colisión post parse si earlyKey nulo
+                    if (key == null) { // fallback: si no se puede construir clave canónica, descartar
+                        malformedLines++; malformedLinesCounter().increment();
+                        if (log.isDebugEnabled()) log.debug("Skipping record without canonical key line #{}", lineNumber);
+                        continue;
+                    }
+                    if (!seenKeys.add(key)) {
                         duplicatesSkipped++; rowsDuplicateSkippedCounter().increment();
                         if (log.isTraceEnabled()) log.trace("Skipping duplicate logical fact key={} (late)", key);
                         continue;
                     }
+                    logicalParsed++; rowsParsedCounter().increment();
                     records.add(record);
                 } catch (Exception e) {
+                    malformedLines++; malformedLinesCounter().increment();
                     log.warn("Skipping malformed line #{}: '{}'. Reason: {}", lineNumber, line, e.getMessage());
                 }
             }
         } finally {
             long elapsed = System.nanoTime() - startNanos;
             parseDurationTimer().record(Duration.ofNanos(elapsed));
-            log.info("Parse summary: linesRead={}, recordsParsedRaw={}, duplicatesSkipped(early+late)={}, newMaquinas={}, newMaquinistas={}, finalRecords={}, elapsedMs={}",
-                    lineNumber, logicalParsed, duplicatesSkipped, newMaquinas.size(), newMaquinistas.size(), records.size(), elapsed / 1_000_000);
+            log.info("Parse summary: linesRead={}, recordsParsedValid={}, duplicatesSkipped(early+late)={}, malformedLines={}, newMaquinas={}, newMaquinistas={}, finalRecords={}, elapsedMs={}",
+                    lineNumber, logicalParsed, duplicatesSkipped, malformedLines, newMaquinas.size(), newMaquinistas.size(), records.size(), elapsed / 1_000_000);
         }
 
         // Persist new dimensions once
@@ -121,9 +135,19 @@ public class ParserService {
     }
 
     private String buildDedupKey(FactProduction r) {
-        String maquinaCode = r.getMaquina() != null ? r.getMaquina().getCodigoMaquina() : "?";
-        String maquinistaCode = r.getMaquinista() != null ? String.valueOf(r.getMaquinista().getCodigoMaquinista()) : "0";
-        return r.getFechaContabilizacion() + "|" + maquinaCode + "|" + maquinistaCode + "|" + r.getNumeroLog();
+        return canonicalKey(r.getFechaContabilizacion(),
+                r.getMaquina() != null ? r.getMaquina().getCodigoMaquina() : null,
+                r.getMaquinista() != null ? r.getMaquinista().getCodigoMaquinista() : null,
+                r.getNumeroLog());
+    }
+
+    // Nuevo helper: genera clave canónica ISO + números normalizados
+    private String canonicalKey(LocalDate fecha, String maquinaCodigo, Long maquinistaCodigo, Long numeroLog) {
+        if (fecha == null || maquinaCodigo == null || numeroLog == null) return null;
+        String maq = maquinaCodigo.trim();
+        if (maq.isEmpty()) return null;
+        long maqnis = (maquinistaCodigo == null) ? 0L : maquinistaCodigo;
+        return fecha.toString() + '|' + maq + '|' + maqnis + '|' + numeroLog;
     }
 
     private Map<String, Integer> parseHeader(String line) {
@@ -243,7 +267,21 @@ public class ParserService {
         try { return new BigDecimal(s); } catch (NumberFormatException e) { return null; }
     }
 
-    private String buildEarlyKey(String line, Map<String, Integer> headerMap) {
+    // Validación básica de campos NOT NULL esenciales de la entidad
+    private boolean isRecordValid(FactProduction r) {
+        return r.getFechaContabilizacion() != null &&
+                r.getMaquina() != null &&
+                r.getNumeroLog() != null &&
+                r.getHoraContabilizacion() != null &&
+                r.getFechaNotificacion() != null &&
+                r.getMaterialSku() != null &&
+                r.getCantidad() != null &&
+                r.getPesoNeto() != null &&
+                r.getTurno() != null;
+    }
+
+    // Nuevo early key canónico: parse mínimo para construir clave final consistente
+    private String buildEarlyKeyCanonical(String line, Map<String, Integer> headerMap) {
         if (headerMap.isEmpty()) return null;
         String[] fields = line.split("\\|", -1);
         Integer idxFecha = headerMap.get("Fecha Cont.");
@@ -252,11 +290,19 @@ public class ParserService {
         Integer idxLog = headerMap.get("Numero Log.");
         if (idxFecha == null || idxMaquina == null || idxLog == null) return null;
         if (idxFecha >= fields.length || idxMaquina >= fields.length || idxLog >= fields.length) return null;
-        String fecha = fields[idxFecha].trim();
-        String maquina = fields[idxMaquina].trim();
-        String logNum = fields[idxLog].trim().replace(" ", "");
-        String maqnis = (idxMaquinista != null && idxMaquinista < fields.length) ? fields[idxMaquinista].trim() : "";
-        if (fecha.isEmpty() || maquina.isEmpty() || logNum.isEmpty()) return null;
-        return fecha + "|" + maquina + "|" + (maqnis.isEmpty() ? "0" : maqnis) + "|" + logNum;
+        String rawFecha = fields[idxFecha].trim();
+        String rawMaquina = fields[idxMaquina].trim();
+        String rawLog = fields[idxLog].trim().replace(" ", "");
+        String rawMaqnis = (idxMaquinista != null && idxMaquinista < fields.length) ? fields[idxMaquinista].trim() : "";
+        if (rawFecha.isEmpty() || rawMaquina.isEmpty() || rawLog.isEmpty()) return null;
+        LocalDate fecha;
+        try { fecha = LocalDate.parse(rawFecha, DATE_FORMATTER); } catch (Exception ex) { return null; }
+        Long numeroLog;
+        try { numeroLog = Long.parseLong(rawLog); } catch (Exception ex) { return null; }
+        Long maquinista = null;
+        if (!rawMaqnis.isEmpty()) {
+            try { maquinista = Long.parseLong(rawMaqnis); } catch (Exception ignore) { maquinista = null; }
+        }
+        return canonicalKey(fecha, rawMaquina, maquinista, numeroLog);
     }
 }

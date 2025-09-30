@@ -207,9 +207,62 @@ for (int i = 0; i < 3; i++) {
 | De-dup parser | Implementado | Evita duplicados intra-archivo |
 | Advisory lock | Implementado (flag) | `etl.lock.enabled` configurable |
 | Métricas parse/sync | Implementadas | Timers + counters |
-| UNIQUE natural key | Pendiente | Requiere limpieza previa |
-| Índice fecha | Pendiente (verificar en DB) | Crear si no existe |
-| Retry constraint | Pendiente | Solo si aparece colisión real |
+| UNIQUE natural key | Implementado | Índice `uq_fact_prod_natural` creado en DB |
+| Índice fecha | Implementado | `idx_fact_production_fecha` presente |
+| Retry constraint | Pendiente | Activar tras validar estabilidad |
+| PK simple (id) | Implementado | Migración desde PK compuesta completada |
 
 ---
-**Fin del Blueprint – IOC-022 (Actualizado)**
+
+## 22. Brechas Pendientes y Criticidad
+
+### Criterios de Criticidad
+| Nivel | Definición | Consecuencia si se omite |
+|-------|------------|---------------------------|
+| ALTA | Impacta integridad de datos o evita garantía de idempotencia/concurrencia | Duplicados, corrupción lógica, reprocesos costosos |
+| MEDIA | Afecta observabilidad, escalabilidad o resiliencia futura | Degradación de rendimiento / diagnóstico lento |
+| BAJA | Mejora higiene, robustez secundaria o limpieza técnica | Riesgo operativo menor / deuda técnica acumulada |
+
+### Lista de Brechas
+| Ítem | Descripción | Criticidad | Acción Recomendada / Notas |
+|------|-------------|------------|-----------------------------|
+| Limpieza previa de duplicados | Ejecutar SQL de detección y eliminación conservando MIN(id) | ALTA | RESUELTO (no había duplicados; ver logs) |
+| Creación índice fecha | `idx_fact_production_fecha` para acelerar DELETE por rango | ALTA | RESUELTO |
+| Creación índice UNIQUE | `uq_fact_prod_natural` (COALESCE) | ALTA | RESUELTO (índice creado) |
+| Normalización consistente clave parser | Early key usa formato distinto (fecha dd.MM.yyyy vs ISO) | ALTA | RESUELTO (canonicalKey aplicado) |
+| Activar advisory lock en prod | `etl.lock.enabled=false` actualmente en properties | ALTA | PENDIENTE: asegurar true en entorno prod |
+| Validación de campos obligatorios en parser | Solo valida fecha y numeroLog, faltan NOT NULL restantes | ALTA | RESUELTO (isRecordValid implementado) |
+| Tests de concurrencia y retry UNIQUE | No existen (lock, colisión) | ALTA | PENDIENTE (crear suite concurrente) |
+| Test idempotencia delete+insert | Reprocesar mismo archivo mantiene conteo | MEDIA | PENDIENTE |
+| Test startup fail-on-detect | Verificar abort con `etl.duplicate.fail-on-detect=true` | MEDIA | PENDIENTE |
+| Normalización ceros a la izquierda | `000123` vs `123` podría colisionar tras UNIQUE | MEDIA | RESUELTO (test leading zeros) |
+| Integración QuarantinedRecord | Entidad no usada (líneas malformadas) | MEDIA | PENDIENTE (decidir persistir errores) |
+| Optimización cache dimensiones | `findAll()` completo cada parse | MEDIA | PENDIENTE (lazy lookup incremental) |
+| Métrica líneas malformadas | Falta contador dedicado | MEDIA | RESUELTO (`etl.rows.malformed`) |
+| Streaming / manejo memoria large files | Todo en memoria | MEDIA | PENDIENTE (evaluar chunking) |
+| Limpieza de jobs zombis | Jobs en estados intermedios si falla proceso | MEDIA | PENDIENTE |
+| Sanitización/truncado log líneas | Línea completa en WARN | BAJA | PENDIENTE (truncar a 200 chars) |
+| Métricas adicionales dimensiones | Nuevas máquinas/maquinistas no contadas | BAJA | PENDIENTE |
+| Ratio duplicados | No se expone | BAJA | PENDIENTE (gauge opcional) |
+| Exponer flags como métricas | Solo config; no gauge | BAJA | PENDIENTE |
+| Secuencia realineo procedimiento | Solo documentado | BAJA | N/A (realineo no requerido) |
+| Eliminación código residual (`FactProductionId`) | No usado | BAJA | PENDIENTE (remover) |
+| Documentar default real lock | Blueprint dice default true, properties false | BAJA | PENDIENTE (ajustar valor o doc) |
+
+### Priorización Recomendada (Sprints)
+- Sprint 1 (Data Integrity): Limpieza duplicados, índice fecha, UNIQUE, normalización clave, activar lock, validación campos, tests críticos.
+- Sprint 2 (Observabilidad & Robustez): Tests idempotencia/startup, métricas nuevas, quarantined records, cache dimensiones.
+- Sprint 3 (Escalabilidad & Deuda): Streaming parser, limpieza jobs zombis, métricas opcionales, código residual.
+
+### Métricas de Éxito Post Cierre (KPI)
+| KPI | Objetivo |
+|-----|----------|
+| Grupos duplicados tras UNIQUE | 0 |
+| Reprocesar archivo (delta filas) | 0 |
+| Colisiones UNIQUE runtime | 0 (o reintentos exitosos < 3) |
+| Tiempo parse (n=archivos base) | Igual o menor a baseline pre-cambio |
+| Ratio duplicados intra-archivo | Estable (monitorización tendencia) |
+| MTTR ante fallo ETL | < 15 min (mejorado por métricas) |
+
+---
+**Fin del Blueprint – IOC-022 (Actualizado con Brechas y Criticidad)**

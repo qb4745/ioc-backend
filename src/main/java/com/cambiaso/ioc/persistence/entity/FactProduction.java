@@ -2,6 +2,8 @@ package com.cambiaso.ioc.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.Hibernate;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -83,4 +85,15 @@ public class FactProduction {
     // Added to support parsing of "Status" column
     @Column(name = "status_origen", length = 10)
     private String statusOrigen;
+
+    @Override
+    public String toString() {
+        return "FactProduction{" +
+                "id=" + id +
+                ", fecha=" + fechaContabilizacion +
+                ", numeroLog=" + numeroLog +
+                ", maquinaId=" + (maquina != null && Hibernate.isInitialized(maquina) ? maquina.getId() : "LAZY") +
+                ", maquinistaId=" + (maquinista != null && Hibernate.isInitialized(maquinista) ? maquinista.getId() : "LAZY") +
+                '}';
+    }
 }

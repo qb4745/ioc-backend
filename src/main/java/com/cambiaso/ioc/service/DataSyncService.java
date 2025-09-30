@@ -8,11 +8,13 @@ import io.micrometer.core.instrument.Timer;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -26,6 +28,7 @@ public class DataSyncService {
     private final FactProductionRepository factProductionRepository;
     private final EntityManager entityManager; // Para advisory lock
     private final MeterRegistry meterRegistry;
+    private final TransactionTemplate transactionTemplate; // Ejecuta bloques transaccionales explícitos
 
     @Value("${etl.lock.enabled:true}")
     private boolean etlLockEnabled;
@@ -33,6 +36,8 @@ public class DataSyncService {
     private boolean retryUniqueEnabled;
     @Value("${etl.retry.unique.max-attempts:3}")
     private int retryMaxAttempts;
+    @Value("${etl.lock.test.sleep-ms:0}")
+    private long lockTestSleepMs; // SOLO para pruebas: delay artificial tras tomar el lock
 
     // Métricas (lazily inicializadas)
     private Counter rowsDeletedCounter() { return meterRegistry.counter("etl.rows.deleted"); }
@@ -42,7 +47,7 @@ public class DataSyncService {
     public void syncWithDeleteInsert(LocalDate minDate, LocalDate maxDate, @NonNull List<FactProduction> records) {
         if (!retryUniqueEnabled) {
             try {
-                doSyncWithDeleteInsertTransactional(minDate, maxDate, records);
+                executeOnce(minDate, maxDate, records);
             } catch (DataIntegrityViolationException dive) {
                 throw new DataSyncException(buildErr(minDate, maxDate, "data integrity violation"), dive);
             } catch (RuntimeException e) {
@@ -52,9 +57,9 @@ public class DataSyncService {
         }
         int attempt = 0;
         while (true) {
+            attempt++;
             try {
-                attempt++;
-                doSyncWithDeleteInsertTransactional(minDate, maxDate, records);
+                executeOnce(minDate, maxDate, records);
                 if (attempt > 1) {
                     log.info("ETL sync succeeded after {} attempt(s) (unique collision retry mode)", attempt);
                 }
@@ -73,35 +78,33 @@ public class DataSyncService {
         }
     }
 
-    @Transactional
-    protected void doSyncWithDeleteInsertTransactional(LocalDate minDate, LocalDate maxDate, @NonNull List<FactProduction> records) {
-        long startNanos = System.nanoTime();
+    private void executeOnce(LocalDate minDate, LocalDate maxDate, List<FactProduction> records) {
+        long start = System.nanoTime();
         try {
-            log.info("Starting data sync for date range {} to {} with {} records (lockEnabled={}, retryUnique={})", minDate, maxDate, records.size(), etlLockEnabled, retryUniqueEnabled);
+            transactionTemplate.execute(status -> {
+                log.info("Starting data sync for date range {} to {} with {} records (lockEnabled={}, retryUnique={})", minDate, maxDate, records.size(), etlLockEnabled, retryUniqueEnabled);
 
-            if (etlLockEnabled) {
-                tryAcquireAdvisoryLock(minDate, maxDate);
-            }
-
-            // Step 1: Delete existing records in the date range (idempotencia por ventana).
-            int beforeDeleteCount = records.size(); // solo para referencia en logging
-            int deletedRows = factProductionRepository.deleteByFechaContabilizacionBetween(minDate, maxDate);
-            rowsDeletedCounter().increment(deletedRows);
-            log.debug("Deleted {} existing rows in date range {} to {}", deletedRows, minDate, maxDate);
-
-            // Step 2: Insert the new batch of records.
-            if (!records.isEmpty()) {
-                // IDs generados vía estrategia SEQUENCE (@GeneratedValue SEQUENCE) – NO BIGSERIAL / IDENTITY.
-                factProductionRepository.saveAll(records);
-                factProductionRepository.flush();
-                rowsInsertedCounter().increment(records.size());
-                log.info("Successfully synced {} records for date range {} to {}", records.size(), minDate, maxDate);
-            } else {
-                log.info("No records to sync for date range {} to {}", minDate, maxDate);
-            }
+                if (etlLockEnabled) {
+                    tryAcquireAdvisoryLock(minDate, maxDate);
+                    if (lockTestSleepMs > 0) {
+                        try { Thread.sleep(lockTestSleepMs); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                    }
+                }
+                int deleted = factProductionRepository.deleteByFechaContabilizacionBetween(minDate, maxDate);
+                rowsDeletedCounter().increment(deleted);
+                log.debug("Deleted {} existing rows in date range {} to {}", deleted, minDate, maxDate);
+                if (!records.isEmpty()) {
+                    factProductionRepository.saveAll(records);
+                    factProductionRepository.flush();
+                    rowsInsertedCounter().increment(records.size());
+                    log.info("Successfully synced {} records for date range {} to {}", records.size(), minDate, maxDate);
+                } else {
+                    log.info("No records to sync for date range {} to {}", minDate, maxDate);
+                }
+                return null;
+            });
         } finally {
-            long elapsed = System.nanoTime() - startNanos;
-            syncDurationTimer().record(Duration.ofNanos(elapsed));
+            syncDurationTimer().record(Duration.ofNanos(System.nanoTime() - start));
         }
     }
 
