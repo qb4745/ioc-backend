@@ -133,6 +133,8 @@ public class DataSyncService {
         try {
             transactionTemplate.execute(status -> {
                 log.info("Starting data sync for date range {} to {} with {} records (lockEnabled={}, retryUnique={})", minDate, maxDate, records.size(), etlLockEnabled, retryUniqueEnabled);
+                // Diagnostic: log injection of test sleep values
+                log.debug("Diagnostic: lockTestSleepMs={} syncTestSleepMs={} (for tests)", lockTestSleepMs, syncTestSleepMs);
 
                 if (etlLockEnabled) {
                     tryAcquireAdvisoryLock(minDate, maxDate);
@@ -168,15 +170,17 @@ public class DataSyncService {
     }
 
     private void tryAcquireAdvisoryLock(LocalDate minDate, LocalDate maxDate) {
+        long lockKey = computeLockKey(minDate, maxDate);
         try {
-            long lockKey = computeLockKey(minDate, maxDate);
-            entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(?);")
+            log.debug("Attempting to acquire advisory lock (key={}) for range {} to {}", lockKey, minDate, maxDate);
+            Object res = entityManager.createNativeQuery("SELECT pg_advisory_xact_lock(?);")
                     .setParameter(1, lockKey)
                     .getSingleResult();
-            log.debug("Acquired advisory lock key={} for range {} to {}", lockKey, minDate, maxDate);
+            log.debug("Acquired advisory lock key={} for range {} to {} (result={})", lockKey, minDate, maxDate, res);
         } catch (RuntimeException ex) {
             // H2 u otras BDs no soportan la función; continuar sin lock
-            log.trace("Advisory lock skipped (function unavailable): {}", ex.getMessage());
+            log.warn("Advisory lock skipped/failed for key={} (range {} to {}) - exception: {}: {}", lockKey, minDate, maxDate, ex.getClass().getName(), ex.getMessage());
+            log.trace("Advisory lock exception stack: ", ex);
         }
     }
 
@@ -188,30 +192,47 @@ public class DataSyncService {
     }
 
     private boolean isUniqueConstraintViolation(Throwable e) {
+        // Diagnostic: log top-level exception class and message
+        if (e == null) return false;
+        log.debug("Checking unique constraint violation for exception type: {} message: {}", e.getClass().getName(), e.getMessage());
         Throwable cur = e;
         while (cur != null) {
             String msg = cur.getMessage();
             if (msg != null) {
                 String lower = msg.toLowerCase();
                 if (lower.contains("uq_fact_prod_natural") || lower.contains("duplicate key") || lower.contains("unique constraint") || lower.contains("violates unique constraint")) {
+                    log.debug("Detected unique violation by message on class {}", cur.getClass().getName());
                     return true;
                 }
             }
             try {
                 if (cur.getClass().getName().equals("org.postgresql.util.PSQLException")) {
                     String sqlState = (String) cur.getClass().getMethod("getSQLState").invoke(cur);
+                    log.debug("Postgres PSQLException SQLState={}", sqlState);
                     if ("23505".equals(sqlState)) return true;
                 }
-            } catch (Exception ignore) { }
+            } catch (Exception inv) {
+                log.trace("Could not read SQLState from exception {}: {}", cur.getClass().getName(), inv.getMessage());
+            }
             if (cur instanceof java.sql.BatchUpdateException bue) {
-                if ("23505".equals(bue.getSQLState())) return true;
-                if (bue.getNextException() != null && "23505".equals(bue.getNextException().getSQLState())) return true;
+                try {
+                    String st = bue.getSQLState();
+                    log.debug("BatchUpdateException SQLState={}", st);
+                    if ("23505".equals(st)) return true;
+                    if (bue.getNextException() != null) {
+                        String nextSt = bue.getNextException().getSQLState();
+                        log.debug("BatchUpdateException nextException SQLState={}", nextSt);
+                        if ("23505".equals(nextSt)) return true;
+                    }
+                } catch (Exception ignore) { }
             }
             if (cur.getClass().getName().equals("org.hibernate.exception.ConstraintViolationException")) {
                 try {
                     Object sqlEx = cur.getClass().getMethod("getSQLException").invoke(cur);
                     if (sqlEx instanceof java.sql.SQLException sql) {
-                        if ("23505".equals(sql.getSQLState())) return true;
+                        String s = sql.getSQLState();
+                        log.debug("Hibernate ConstraintViolationException SQLState={}", s);
+                        if ("23505".equals(s)) return true;
                     }
                 } catch (Exception ignore) { }
             }
@@ -222,7 +243,11 @@ public class DataSyncService {
             java.io.StringWriter sw = new java.io.StringWriter();
             java.io.PrintWriter pw = new java.io.PrintWriter(sw);
             e.printStackTrace(pw);
-            if (sw.toString().contains("23505")) return true;
+            String stack = sw.toString();
+            if (stack.contains("23505")) {
+                log.debug("Detected SQLState 23505 in stack trace");
+                return true;
+            }
         } catch (Exception ignore) { }
         return false;
     }
