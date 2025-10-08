@@ -53,3 +53,6 @@ build/
 # Mantener el repositorio limpio en diferentes sistemas operativos.
 .DS_Store
 Thumbs.db
+
+# 8. Env
+.env

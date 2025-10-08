@@ -12,7 +12,7 @@
 
 ## 2. TEMPLATE DE EJECUCIÓN (EDITAR ESTA SECCIÓN)
 
-SALIDA_A_REVISAR: "@.gemini/sprints/BITACORA_SPRINT_1.md"
+SALIDA_A_REVISAR: ".gemini/blueprints/task-ingesta-back-implementation-plan.md"
 # Ejemplo alternativo: "El documento @.gemini/strategy/design_tokens.md que acabas de generar."
 # Ejemplo alternativo: "El componente React `MetricCard.tsx` que acabamos de crear."
 

@@ -1,34 +1,22 @@
-# Prompt: Ciclo de Refinamiento y Quality Assurance
+# Prompt: Ciclo de Refinamiento y Quality Assurance v2.0
 
-## 1. CONFIGURACIÓN (PARA EL HUMANO)
-*   **Propósito:** Este prompt instruye a la IA para que realice una revisión crítica y constructiva de su última salida (plan, documento, código, etc.) y proponga mejoras concretas.
-*   **Acción Requerida:** Describe brevemente la salida que quieres que la IA revise en la variable `SALIDA_A_REVISAR`.
-*   **Modo de Uso:**
-    1.  Edita la variable `SALIDA_A_REVISAR`.
-    2.  Copia y pega el contenido completo de este archivo en Gemini CLI.
-    3.  La IA presentará un análisis y una propuesta. Para aprobar, responde con "Aplica los cambios" o "Procede con la refactorización".
+## 1. Propósito y Modo de Uso
+*   **Propósito:** Este prompt instruye a la IA para que realice una revisión crítica y constructiva de su **propia salida anterior**, proponiendo e implementando mejoras concretas.
+*   **Modo de Uso:** Después de que la IA genere un plan, documento o código, simplemente envía el contenido completo de este prompt. No necesitas editar ni configurar nada. La IA sabrá que debe refinar lo que acaba de crear.
 
 ---
 
-## 2. TEMPLATE DE EJECUCIÓN (EDITAR ESTA SECCIÓN)
+## 2. MANDATO OPERATIVO (PARA LA IA)
 
-SALIDA_A_REVISAR: ".gemini/blueprints/task-ingesta-back-implementation-plan.md"
-# Ejemplo alternativo: "El documento @.gemini/strategy/design_tokens.md que acabas de generar."
-# Ejemplo alternativo: "El componente React `MetricCard.tsx` que acabamos de crear."
-
----
-
-## 3. MANDATO OPERATIVO (PARA LA IA)
-
-Tu rol cambia ahora al de un **Senior Quality Assurance Architect** y **Refinement Specialist**. Tu misión es realizar una revisión crítica y constructiva del último resultado que has generado, identificado como `{{SALIDA_A_REVISAR}}`, con el objetivo de elevar su calidad.
+Tu rol cambia ahora al de un **Senior Quality Assurance Architect** y **Refinement Specialist**. Tu misión es realizar una revisión crítica y constructiva del artefacto que has generado en tu respuesta inmediatamente anterior (de ahora en adelante, `{{SALIDA_ANTERIOR}}`), con el objetivo de elevar su calidad.
 
 **PROTOCOLO DE REVISIÓN Y REFACTORIZACIÓN (MANDATORIO):**
-Debes ejecutar el siguiente proceso en tres fases. No pases a la siguiente fase sin la aprobación explícita del usuario.
+Debes ejecutar el siguiente proceso en tres fases. No pases a la siguiente fase sin la aprobación explícita del usuario (ej: "ok", "procede", "aplica los cambios").
 
 ### Fase 1: Autoevaluación Crítica
-*   **Objetivo:** Analizar la `{{SALIDA_A_REVISAR}}` contra un conjunto de criterios de calidad.
+*   **Objetivo:** Analizar la `{{SALIDA_ANTERIOR}}` contra un conjunto de criterios de calidad.
 *   **Acciones:**
-    1.  Relee tu última salida y evalúala honestamente según los siguientes ejes:
+    1.  Relee tu `{{SALIDA_ANTERIOR}}` y evalúala honestamente según los siguientes ejes:
         *   **Claridad y Simplicidad:** ¿Es fácil de entender? ¿Hay ambigüedades? ¿Se puede simplificar sin perder valor?
         *   **Eficiencia y Concisión:** ¿Hay redundancia o "bloat"? ¿Se podría lograr el mismo objetivo con menos código, menos pasos o menos texto?
         *   **Robustez y Casos Límite:** (Si aplica a un plan o código) ¿Considera los casos de error, estados vacíos o entradas inesperadas? ¿Es resiliente?
@@ -52,6 +40,6 @@ Debes ejecutar el siguiente proceso en tres fases. No pases a la siguiente fase 
 ### Fase 3: Aplicación de Cambios
 *   **Objetivo:** Implementar las mejoras aprobadas.
 *   **Acciones:**
-    1.  Una vez aprobado el plan de refinamiento, aplica los cambios a la `{{SALIDA_A_REVISAR}}`. Si es un archivo, modifícalo; si es un plan, preséntalo en su versión final y mejorada.
+    1.  Una vez aprobado el plan de refinamiento, aplica los cambios a la `{{SALIDA_ANTERIOR}}`. Si es un archivo, modifícalo; si es un plan, preséntalo en su versión final y mejorada.
 
 *   **Salida:** Presenta el artefacto final refactorizado y confirma que el ciclo de calidad ha sido completado.
