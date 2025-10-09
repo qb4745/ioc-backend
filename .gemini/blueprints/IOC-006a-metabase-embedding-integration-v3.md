@@ -56,6 +56,7 @@ ioc-project/
 ### 🔴 SPRINT 1: Configuración Base (P0)
 
 #### **BE-TASK-01**: Añadir dependencias Maven
+
 **Archivo**: `pom.xml`
 **Estimación**: 15 min
 
@@ -113,6 +114,7 @@ ioc-project/
 ---
 
 #### **BE-TASK-02**: Crear clase `CustomUserDetails`
+
 **Archivo**: `src/main/java/com/cambiaso/ioc/security/CustomUserDetails.java`
 **Estimación**: 30 min
 
@@ -127,7 +129,7 @@ import java.util.Collection;
 
 @Getter
 public class CustomUserDetails extends User {
-    
+
     private final Long userId;
     private final String email;
     private final String department;
@@ -183,6 +185,7 @@ public class CustomUserDetails extends User {
 ---
 
 #### **BE-TASK-03**: Configurar `application.yml`
+
 **Archivo**: `src/main/resources/application.yml`
 **Estimación**: 20 min
 
@@ -205,7 +208,7 @@ metabase:
         - name: department
           type: USER_ATTRIBUTE
           source: department
-          
+
     - id: 6
       name: Dashboard Operacional
       description: Métricas operativas diarias
@@ -233,7 +236,7 @@ resilience4j:
         wait-duration-in-open-state: 30s
         sliding-window-size: 10
         permitted-number-of-calls-in-half-open-state: 3
-        
+
   ratelimiter:
     instances:
       dashboardAccess:
@@ -254,6 +257,7 @@ logging:
 ---
 
 #### **BE-TASK-04**: Crear `MetabaseProperties`
+
 **Archivo**: `src/main/java/com/cambiaso/ioc/config/MetabaseProperties.java`
 **Estimación**: 20 min
 
@@ -278,18 +282,18 @@ import java.util.Set;
 @ConfigurationProperties(prefix = "metabase")
 @Validated
 public class MetabaseProperties {
-    
+
     @NotBlank(message = "Metabase site URL is required")
     private String siteUrl;
-    
+
     @NotBlank(message = "Metabase secret key is required")
     @Pattern(regexp = "^[A-Fa-f0-9]{64,}$", 
              message = "Secret key must be hexadecimal with at least 64 characters")
     private String secretKey;
-    
+
     @Min(value = 1, message = "Token expiration must be at least 1 minute")
     private int tokenExpirationMinutes = 10;
-    
+
     @NotEmpty(message = "At least one dashboard must be configured")
     @Valid
     private List<DashboardConfig> dashboards;
@@ -298,15 +302,15 @@ public class MetabaseProperties {
     public static class DashboardConfig {
         @Min(value = 1, message = "Dashboard ID must be positive")
         private int id;
-        
+
         @NotBlank(message = "Dashboard name is required")
         private String name;
-        
+
         private String description;
-        
+
         @NotEmpty(message = "At least one role must be configured")
         private Set<String> allowedRoles;
-        
+
         private List<FilterConfig> filters;
     }
 
@@ -314,10 +318,10 @@ public class MetabaseProperties {
     public static class FilterConfig {
         @NotBlank(message = "Filter name is required")
         private String name;
-        
+
         @NotBlank(message = "Filter type is required")
         private String type;
-        
+
         @NotBlank(message = "Filter source is required")
         private String source;
     }
@@ -325,6 +329,7 @@ public class MetabaseProperties {
 ```
 
 **Validación**: 
+
 ```bash
 # La aplicación debe fallar al arrancar si METABASE_SECRET_KEY no está definida
 # o no cumple el patrón de 64+ caracteres hexadecimales
@@ -333,6 +338,7 @@ public class MetabaseProperties {
 ---
 
 #### **BE-TASK-05**: Configurar caché
+
 **Archivo**: `src/main/java/com/cambiaso/ioc/config/CacheConfig.java`
 **Estimación**: 15 min
 
@@ -351,6 +357,7 @@ public class CacheConfig {
 ```
 
 **Validación**: Verificar en logs al arrancar:
+
 ```
 Initialized cache 'dashboardTokens'
 ```
@@ -360,6 +367,7 @@ Initialized cache 'dashboardTokens'
 ### 🟠 SPRINT 2: Lógica de Negocio (P0 + P1)
 
 #### **BE-TASK-06**: Crear excepciones personalizadas
+
 **Archivos**: 2 nuevos
 **Estimación**: 10 min
 
@@ -390,6 +398,7 @@ public class DashboardAccessDeniedException extends RuntimeException {
 ---
 
 #### **BE-TASK-07**: Actualizar `GlobalExceptionHandler`
+
 **Archivo**: `src/main/java/com/cambiaso/ioc/exception/GlobalExceptionHandler.java` (MODIFICAR)
 **Estimación**: 15 min
 
@@ -432,6 +441,7 @@ public ResponseEntity<ErrorResponse> handleDashboardAccessDenied(
 ---
 
 #### **BE-TASK-08**: Crear `DashboardAuditService`
+
 **Archivo**: `src/main/java/com/cambiaso/ioc/service/DashboardAuditService.java`
 **Estimación**: 20 min
 
@@ -448,10 +458,10 @@ import java.time.LocalDateTime;
 @Slf4j
 @RequiredArgsConstructor
 public class DashboardAuditService {
-    
+
     // TODO: Inyectar AuditLogRepository cuando esté disponible
     // private final AuditLogRepository auditLogRepository;
-    
+
     public void logDashboardAccess(
             String username, 
             int dashboardId, 
@@ -459,7 +469,7 @@ public class DashboardAuditService {
             boolean granted
     ) {
         LocalDateTime timestamp = LocalDateTime.now();
-        
+
         if (granted) {
             log.info("AUDIT: Dashboard access GRANTED - User: {}, Dashboard ID: {}, Dashboard: {}, Timestamp: {}", 
                 username, dashboardId, dashboardName, timestamp);
@@ -467,7 +477,7 @@ public class DashboardAuditService {
             log.warn("AUDIT: Dashboard access DENIED - User: {}, Dashboard ID: {}, Timestamp: {}", 
                 username, dashboardId, timestamp);
         }
-        
+
         // TODO: Descomentar cuando el repositorio esté disponible
         // AuditLog auditLog = new AuditLog(username, dashboardId, dashboardName, granted, timestamp);
         // auditLogRepository.save(auditLog);
@@ -480,6 +490,7 @@ public class DashboardAuditService {
 ---
 
 #### **BE-TASK-09**: Crear `MetabaseEmbeddingService` (CRÍTICO)
+
 **Archivo**: `src/main/java/com/cambiaso/ioc/service/MetabaseEmbeddingService.java`
 **Estimación**: 2 horas
 
@@ -524,14 +535,14 @@ public class MetabaseEmbeddingService {
         this.properties = properties;
         this.auditService = auditService;
         this.meterRegistry = meterRegistry;
-        
+
         // Validación robusta al arranque
         validateSecretKey(properties.getSecretKey());
-        
+
         this.key = Keys.hmacShaKeyFor(
             properties.getSecretKey().getBytes(StandardCharsets.UTF_8)
         );
-        
+
         log.info("MetabaseEmbeddingService initialized successfully with {} configured dashboards", 
             properties.getDashboards().size());
     }
@@ -542,14 +553,14 @@ public class MetabaseEmbeddingService {
                 "Metabase secret key is required. Set METABASE_SECRET_KEY environment variable."
             );
         }
-        
+
         if (secretKey.length() < 64) {
             throw new IllegalStateException(
                 String.format("Metabase secret key is too short (%d chars). Must be at least 64 characters.", 
                     secretKey.length())
             );
         }
-        
+
         if (!secretKey.matches("^[A-Fa-f0-9]+$")) {
             throw new IllegalStateException(
                 "Metabase secret key must be hexadecimal (0-9, A-F). Check your METABASE_SECRET_KEY variable."
@@ -569,14 +580,14 @@ public class MetabaseEmbeddingService {
     @Cacheable(value = "dashboardTokens", key = "#authentication.name + '_' + #dashboardId")
     public String getSignedDashboardUrl(int dashboardId, Authentication authentication) {
         Timer.Sample sample = Timer.start(meterRegistry);
-        
+
         try {
             // 1. Buscar configuración del dashboard
             MetabaseProperties.DashboardConfig config = findDashboardConfig(dashboardId);
-            
+
             // 2. Verificar autorización
             checkAuthorization(config, authentication);
-            
+
             // 3. Registrar acceso concedido
             auditService.logDashboardAccess(
                 authentication.getName(), 
@@ -584,29 +595,29 @@ public class MetabaseEmbeddingService {
                 config.getName(), 
                 true
             );
-            
+
             // 4. Construir parámetros de filtrado
             Map<String, Object> params = buildParams(config, authentication);
-            
+
             // 5. Generar token JWT
             String token = generateToken(dashboardId, params);
-            
+
             // 6. Construir URL final
             String url = String.format("%s/embed/dashboard/%s#bordered=true&titled=true", 
                 properties.getSiteUrl(), token);
-            
+
             // 7. Registrar métrica de éxito
             meterRegistry.counter("metabase.dashboard.access",
                 "dashboard", String.valueOf(dashboardId),
                 "user", authentication.getName(),
                 "status", "success"
             ).increment();
-            
+
             log.debug("Generated signed URL for dashboard {} for user {}", 
                 dashboardId, authentication.getName());
-            
+
             return url;
-            
+
         } catch (DashboardAccessDeniedException | DashboardNotFoundException e) {
             // Registrar acceso denegado
             auditService.logDashboardAccess(
@@ -615,15 +626,15 @@ public class MetabaseEmbeddingService {
                 "UNKNOWN", 
                 false
             );
-            
+
             meterRegistry.counter("metabase.dashboard.access",
                 "dashboard", String.valueOf(dashboardId),
                 "user", authentication.getName(),
                 "status", "denied"
             ).increment();
-            
+
             throw e;
-            
+
         } finally {
             sample.stop(Timer.builder("metabase.dashboard.request.duration")
                 .tag("dashboard", String.valueOf(dashboardId))
@@ -641,13 +652,13 @@ public class MetabaseEmbeddingService {
             Exception ex
     ) {
         log.error("Circuit breaker activated for dashboard {}. Metabase may be down.", dashboardId, ex);
-        
+
         meterRegistry.counter("metabase.dashboard.access",
             "dashboard", String.valueOf(dashboardId),
             "user", authentication.getName(),
             "status", "circuit_open"
         ).increment();
-        
+
         throw new RuntimeException(
             "Dashboard service is temporarily unavailable. Please try again in a few moments.",
             ex
@@ -671,7 +682,7 @@ public class MetabaseEmbeddingService {
             .anyMatch(grantedAuthority -> 
                 config.getAllowedRoles().contains(grantedAuthority.getAuthority())
             );
-        
+
         if (!isAuthorized) {
             log.warn("User {} attempted to access dashboard {} without proper roles. Required: {}, Has: {}", 
                 authentication.getName(),
@@ -679,7 +690,7 @@ public class MetabaseEmbeddingService {
                 config.getAllowedRoles(),
                 authentication.getAuthorities()
             );
-            
+
             throw new DashboardAccessDeniedException(
                 String.format("You do not have permission to view '%s'. Required roles: %s", 
                     config.getName(),
@@ -693,20 +704,20 @@ public class MetabaseEmbeddingService {
             Authentication authentication
     ) {
         Map<String, Object> params = new HashMap<>();
-        
+
         if (config.getFilters() == null || config.getFilters().isEmpty()) {
             return params;
         }
-        
+
         Object principal = authentication.getPrincipal();
-        
+
         if (!(principal instanceof CustomUserDetails)) {
             log.warn("Authentication principal is not CustomUserDetails. Filters will not be applied.");
             return params;
         }
-        
+
         CustomUserDetails userDetails = (CustomUserDetails) principal;
-        
+
         config.getFilters().forEach(filter -> {
             if ("USER_ATTRIBUTE".equals(filter.getType())) {
                 Object value = extractUserAttribute(userDetails, filter.getSource());
@@ -719,7 +730,7 @@ public class MetabaseEmbeddingService {
                 }
             }
         });
-        
+
         return params;
     }
 
@@ -740,7 +751,7 @@ public class MetabaseEmbeddingService {
 
     private String generateToken(int dashboardId, Map<String, Object> params) {
         long expirationMillis = TimeUnit.MINUTES.toMillis(properties.getTokenExpirationMinutes());
-        
+
         return Jwts.builder()
             .claim("resource", Map.of("dashboard", dashboardId))
             .claim("params", params)
@@ -753,6 +764,7 @@ public class MetabaseEmbeddingService {
 ```
 
 **Validación**:
+
 - Aplicación arranca sin errores
 - Logs muestran "MetabaseEmbeddingService initialized successfully"
 - Lanzar excepción manualmente y verificar fallback
@@ -760,6 +772,7 @@ public class MetabaseEmbeddingService {
 ---
 
 #### **BE-TASK-10**: Crear `DashboardController`
+
 **Archivo**: `src/main/java/com/cambiaso/ioc/controller/DashboardController.java`
 **Estimación**: 30 min
 
@@ -806,9 +819,9 @@ public class DashboardController {
     ) {
         log.info("Dashboard URL requested - User: {}, Dashboard ID: {}", 
             authentication.getName(), dashboardId);
-        
+
         String signedUrl = embeddingService.getSignedDashboardUrl(dashboardId, authentication);
-        
+
         return ResponseEntity.ok(Map.of(
             "signedUrl", signedUrl,
             "expiresInMinutes", 10,
@@ -819,6 +832,7 @@ public class DashboardController {
 ```
 
 **Validación**: 
+
 ```bash
 curl -X GET http://localhost:8080/api/v1/dashboards/5 \
      -H "Authorization: Bearer YOUR_TEST_TOKEN"
@@ -827,6 +841,7 @@ curl -X GET http://localhost:8080/api/v1/dashboards/5 \
 ---
 
 #### **BE-TASK-11**: Configurar seguridad (CSP y CORS)
+
 **Archivo**: `src/main/java/com/cambiaso/ioc/config/SecurityConfig.java` (MODIFICAR)
 **Estimación**: 30 min
 
@@ -843,7 +858,7 @@ public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
             )
             .frameOptions(frame -> frame.sameOrigin())
         );
-    
+
     return http.build();
 }
 ```
@@ -860,10 +875,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
-    
+
     @Value("${metabase.site-url}")
     private String metabaseUrl;
-    
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/v1/dashboards/**")
@@ -877,6 +892,7 @@ public class CorsConfig implements WebMvcConfigurer {
 ```
 
 **Validación**: Verificar headers en la respuesta HTTP:
+
 ```
 Content-Security-Policy: frame-ancestors 'self'
 X-Frame-Options: SAMEORIGIN
@@ -887,6 +903,7 @@ X-Frame-Options: SAMEORIGIN
 ### 🟡 SPRINT 3: Frontend (P1)
 
 #### **FE-TASK-01**: Crear tipos TypeScript
+
 **Archivo**: `src/types/dashboard.ts`
 **Estimación**: 10 min
 
@@ -916,6 +933,7 @@ export interface DashboardError {
 ---
 
 #### **FE-TASK-02**: Crear componente `DashboardEmbed`
+
 **Archivo**: `src/components/DashboardEmbed.tsx`
 **Estimación**: 2 horas
 
@@ -972,9 +990,9 @@ const DashboardEmbed: React.FC<DashboardEmbedProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        
+
         let errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-        
+
         // Mensajes específicos por código de error
         if (response.status === 403) {
           errorMessage = 'You do not have permission to view this dashboard.';
@@ -983,7 +1001,7 @@ const DashboardEmbed: React.FC<DashboardEmbedProps> = ({
         } else if (response.status === 503) {
           errorMessage = 'Dashboard service is temporarily unavailable. Please try again in a few moments.';
         }
-        
+
         throw new Error(errorMessage);
       }
 
@@ -1016,7 +1034,7 @@ const DashboardEmbed: React.FC<DashboardEmbedProps> = ({
 
     if (isMounted) {
       fetchDashboardUrl();
-      
+
       // Refrescar token cada 8 minutos (expira en 10)
       refreshInterval = setInterval(() => {
         if (isMounted) {
@@ -1091,6 +1109,7 @@ export default DashboardEmbed;
 ---
 
 #### **FE-TASK-03**: Crear página de ejemplo
+
 **Archivo**: `src/pages/DashboardsPage.tsx`
 **Estimación**: 30 min
 
@@ -1117,7 +1136,7 @@ const DashboardsPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Analytics Dashboards</h1>
-      
+
       {/* Dashboard Gerencial - Solo Admin y Manager */}
       {(hasRole('ROLE_ADMIN') || hasRole('ROLE_MANAGER')) && (
         <section className="mb-8">
@@ -1174,6 +1193,7 @@ export default DashboardsPage;
 ### 🧪 SPRINT 4: Testing (P2)
 
 #### **QA-TASK-01**: Test unitario del servicio
+
 **Archivo**: `src/test/java/com/cambiaso/ioc/service/MetabaseEmbeddingServiceTest.java`
 **Estimación**: 1 hora
 
@@ -1220,14 +1240,14 @@ class MetabaseEmbeddingServiceTest {
         properties.setSiteUrl("http://localhost:3000");
         properties.setSecretKey("A".repeat(64)); // Clave válida hex
         properties.setTokenExpirationMinutes(10);
-        
+
         MetabaseProperties.DashboardConfig dashboard = new MetabaseProperties.DashboardConfig();
         dashboard.setId(5);
         dashboard.setName("Test Dashboard");
         dashboard.setAllowedRoles(Set.of("ROLE_ADMIN", "ROLE_USER"));
-        
+
         properties.setDashboards(List.of(dashboard));
-        
+
         service = new MetabaseEmbeddingService(
             properties, 
             auditService, 
@@ -1252,7 +1272,7 @@ class MetabaseEmbeddingServiceTest {
         assertThat(url).isNotNull();
         assertThat(url).startsWith("http://localhost:3000/embed/dashboard/");
         assertThat(url).contains("#bordered=true&titled=true");
-        
+
         verify(auditService).logDashboardAccess("testuser", 5, "Test Dashboard", true);
     }
 
@@ -1276,7 +1296,7 @@ class MetabaseEmbeddingServiceTest {
         assertThatThrownBy(() -> service.getSignedDashboardUrl(5, authentication))
             .isInstanceOf(DashboardAccessDeniedException.class)
             .hasMessageContaining("You do not have permission");
-        
+
         verify(auditService).logDashboardAccess("unauthorized", 5, "UNKNOWN", false);
     }
 
@@ -1305,6 +1325,7 @@ class MetabaseEmbeddingServiceTest {
 ---
 
 #### **QA-TASK-02**: Test de integración del controlador
+
 **Archivo**: `src/test/java/com/cambiaso/ioc/controller/DashboardControllerIntegrationTest.java`
 **Estimación**: 1 hora
 
@@ -1443,9 +1464,10 @@ Los dos documentos están ahora production-ready con:
 - 📖 **Documentación** (Guía conceptual + Blueprint técnico)
 
 **Próximos pasos**:
+
 1. Revisar ambos documentos
 2. Adaptar código a tu estructura de proyecto existente
 3. Ejecutar las tareas en el orden de los sprints
 4. Reportar cualquier bloqueador o duda
 
-¿Necesitas aclaraciones sobre alguna parte específica?
+¿Necesitas aclaraciones sobre alguna parte específica

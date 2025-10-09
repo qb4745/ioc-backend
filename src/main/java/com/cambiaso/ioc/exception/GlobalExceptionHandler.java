@@ -42,6 +42,20 @@ public class GlobalExceptionHandler {
                 .body(createErrorResponse("FILE_TOO_LARGE", "File size exceeds maximum allowed limit"));
     }
 
+    @ExceptionHandler(DashboardNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleDashboardNotFound(DashboardNotFoundException ex) {
+        log.warn("Dashboard not found request: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(createErrorResponse("DASHBOARD_NOT_FOUND", ex.getMessage()));
+    }
+
+    @ExceptionHandler(DashboardAccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleDashboardAccessDenied(DashboardAccessDeniedException ex) {
+        log.warn("Dashboard access denied: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(createErrorResponse("ACCESS_DENIED", ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericError(Exception ex) {
         log.error("Unexpected error", ex);
@@ -55,5 +69,20 @@ public class GlobalExceptionHandler {
                 "message", message,
                 "timestamp", OffsetDateTime.now()
         );
+    }
+
+    // Security Exceptions
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthenticationException(Exception ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(createErrorResponse("UNAUTHORIZED", "Authentication failed"));
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDeniedException(Exception ex) {
+        log.warn("Access denied: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(createErrorResponse("ACCESS_DENIED", "You do not have permission to access this resource"));
     }
 }
