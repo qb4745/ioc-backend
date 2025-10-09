@@ -90,8 +90,9 @@ public class MetabaseEmbeddingService {
             return url;
             
         } catch (DashboardAccessDeniedException | DashboardNotFoundException e) {
-            auditService.logDashboardAccess(authentication.getName(), dashboardId, "UNKNOWN", false);
-            meterRegistry.counter("metabase.dashboard.access", "dashboard", String.valueOf(dashboardId), "user", authentication.getName(), "status", "denied").increment();
+            String username = (authentication != null && authentication.getName() != null) ? authentication.getName() : "unknown";
+            auditService.logDashboardAccess(username, dashboardId, "UNKNOWN", false);
+            meterRegistry.counter("metabase.dashboard.access", "dashboard", String.valueOf(dashboardId), "user", username, "status", "denied").increment();
             throw e;
         } finally {
             sample.stop(Timer.builder("metabase.dashboard.request.duration").tag("dashboard", String.valueOf(dashboardId)).register(meterRegistry));

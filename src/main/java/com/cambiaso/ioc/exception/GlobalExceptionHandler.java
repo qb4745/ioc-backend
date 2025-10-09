@@ -1,5 +1,6 @@
 package com.cambiaso.ioc.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -54,6 +55,17 @@ public class GlobalExceptionHandler {
         log.warn("Dashboard access denied: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(createErrorResponse("ACCESS_DENIED", ex.getMessage()));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex) {
+        log.warn("Validation constraint violation: {}", ex.getMessage());
+        String message = ex.getConstraintViolations().stream()
+            .map(violation -> violation.getMessage())
+            .findFirst()
+            .orElse("Invalid request parameters");
+        return ResponseEntity.badRequest()
+                .body(createErrorResponse("VALIDATION_ERROR", message));
     }
 
     @ExceptionHandler(Exception.class)
