@@ -43,8 +43,15 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 // Configure the app as an OAuth2 Resource Server to validate JWTs
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt.decoder(jwtDecoder()))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder())))
+                // Add security headers for embedding protection
+                .headers(headers -> headers
+                    // Disables the default X-Frame-Options header which is DENY
+                    .frameOptions(frameOptions -> frameOptions.sameOrigin())
+                    // Sets the Content-Security-Policy header to allow embedding only from the same origin
+                    .contentSecurityPolicy(csp -> csp
+                        .policyDirectives("frame-ancestors 'self'; default-src 'self'")
+                    )
                 );
 
         return http.build();
