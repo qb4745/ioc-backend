@@ -45,55 +45,32 @@ Este documento registra el desglose técnico de las implementaciones realizadas 
 <!-- NUEVAS ENTRADAS DE HISTORIAS SE AÑADEN AQUÍ -->
 <!-- NUEVAS ENTRradas DE HISTORIAS SE AÑADEN AQUÍ -->
 ## IOC-001: Cargar y validar un archivo CSV con datos de producción
-
-*   **Estado:** ✅ **Terminada (Backend)**
-*   **Objetivo de Negocio (El "Para Qué"):** Permitir a los administradores cargar archivos de producción de forma segura y asíncrona, obteniendo feedback en tiempo real sobre el estado del procesamiento para agilizar la toma de decisiones.
+*   **Estado:** 🟡 **En Progreso**
+*   **Objetivo de Negocio (El "Para Qué"):** Permitir a los administradores cargar archivos de producción de forma segura, obteniendo feedback inmediato sobre la validez y el estado del procesamiento.
 *   **Criterios de Aceptación Clave:**
-    *   La API permite subir un archivo CSV de forma segura.
-    *   El sistema rechaza archivos duplicados para garantizar la idempotencia.
-    *   El procesamiento del archivo es asíncrono; el cliente recibe una respuesta inmediata (`202 Accepted`).
-    *   El cliente puede consultar el estado detallado de un job de carga en cualquier momento.
-    *   El cliente recibe notificaciones en tiempo real sobre el progreso del job vía WebSockets.
+    *   La interfaz permite seleccionar y subir un archivo CSV.
+    *   El sistema rechaza archivos con formato incorrecto.
+    *   Se muestra una notificación de éxito o error al finalizar la carga.
 
-### Desglose Técnico de la Implementación
-
-*   **Plan Aprobado:** Se ejecutó el plan `task-ingesta-back-implementation-plan.md`, construyendo el sistema en capas:
-    1.  **Persistencia:** Mapeo de entidades JPA y repositorios.
-    2.  **Infraestructura:** Configuración de un pool de hilos (`@Async`) y WebSockets (STOMP) con seguridad integrada.
-    3.  **Lógica de Negocio:** Implementación de servicios transaccionales para la gobernanza de jobs y la sincronización de datos.
-    4.  **API:** Orquestación del flujo completo y exposición a través de endpoints REST seguros.
-
-*   **Archivos Creados/Modificados:**
-    *   `com.cambiaso.ioc.controller.EtlController`
-    *   `com.cambiaso.ioc.service.*` (EtlProcessingService, EtlJobService, DataSyncService, NotificationService, ParserService)
-    *   `com.cambiaso.ioc.persistence.entity.*` (EtlJob, FactProduction, etc.)
-    *   `com.cambiaso.ioc.persistence.repository.*` (EtlJobRepository, etc.)
-    *   `com.cambiaso.ioc.config.*` (AsyncConfig, WebSocketConfig, WebSocketSecurityConfig)
-    *   `com.cambiaso.ioc.dto.*` (EtlJobStatusDto, NotificationPayload)
-    *   `com.cambiaso.ioc.exception.*` (JobConflictException, etc.)
-    *   `src/test/java/com/cambiaso/ioc/**` (Tests de integración y unitarios)
+### Desglose Técnico y Verificación
 
 *   **Resumen de la Implementación:**
-    Se ha construido un pipeline de ETL asincrónico y robusto. El `EtlController` recibe el archivo, valida su unicidad mediante un hash SHA-256 y crea un registro en `EtlJobService`. Inmediatamente, delega el procesamiento a `EtlProcessingService` en un hilo separado (`@Async`), devolviendo un `202 Accepted` con el `jobId`. El orquestador se encarga de parsear el archivo (con lógica "find-or-create" para dimensiones), validar la concurrencia con "window locking", sincronizar los datos de forma transaccional (`delete-insert`) y notificar cada paso del proceso (`PROCESANDO`, `EXITO`, `FALLO`) al usuario a través de `NotificationService` y WebSockets seguros.
+    *   **Backend:** ✅ **Terminado.** Se ha construido un pipeline de ETL asincrónico con endpoints para iniciar el procesamiento (`POST /api/etl/start-process`) y consultar el estado (`GET /api/etl/jobs/{jobId}/status`).
+    *   **Frontend:** ✅ **UI Completada.** La vista de Ingesta de Datos está construida con componentes reutilizables y manejo de estados (carga, error, vacío), pero utiliza datos simulados.
 
-### Verificación y Pruebas Realizadas
+*   **Archivos Clave:**
+    *   **Backend:** `com.cambiaso.ioc.controller.EtlController`, `com.cambiaso.ioc.service.EtlProcessingService`.
+    *   **Frontend:** `src/pages/admin/DataIngestionPage.tsx`, `src/components/admin/DataUploadDropzone.tsx`.
 
-*   **Pruebas Automatizadas:**
-    *   **(Backend) Pruebas de Integración y Unitarias:** Se ha creado una suite de pruebas exhaustiva que valida cada capa del sistema:
-        *   `PersistenceLayerTest`: Valida todos los mapeos de entidades JPA y constraints de la base de datos con H2.
-        *   `ParserServiceTest`: Asegura que el parser procesa correctamente el formato de archivo real, incluyendo la lógica "find-or-create".
-        *   `NotificationServiceTest`: Verifica que las notificaciones se envían al destino y usuario correctos.
-        *   `EtlJobServiceTest`: Valida la lógica de gobernanza, incluyendo la idempotencia por hash y las guardas de concurrencia por rango de fechas.
-        *   `DataSyncServiceTest`: Confirma el comportamiento transaccional atómico, incluyendo el rollback exitoso en caso de fallo.
-        *   `EtlControllerTest`: Prueba la capa de API con `MockMvc`, validando la seguridad de los endpoints, las respuestas HTTP correctas (202, 401, 409) y la invocación del flujo asíncrono.
+*   **Trabajo Pendiente (Integración Frontend):**
+    1.  **Crear Servicio API:** Implementar un servicio (`apiService.ts`) que encapsule las llamadas a los endpoints del backend, incluyendo la inyección automática del token de autenticación.
+    2.  **Conectar Subida de Archivos:** Modificar `DataIngestionPage.tsx` para que llame al endpoint `POST /api/etl/start-process` al subir un archivo.
+    3.  **Implementar Polling de Estado:** Al recibir el `jobId` de la respuesta, iniciar un `setInterval` para consultar periódicamente el endpoint `GET /api/etl/jobs/{jobId}/status`.
+    4.  **Actualizar UI con Datos Reales:** Usar la respuesta del polling para actualizar la tabla de historial y mostrar notificaciones de éxito o fallo basadas en la respuesta real del backend.
 
-*   **Pruebas Manuales (End-to-End):**
-    *   **Caso de Prueba 1 (Happy Path):** 1. Obtener un JWT válido. 2. Enviar una petición `POST` a `/api/etl/start-process` con un archivo CSV válido. **Resultado Esperado:** Recibir una respuesta `202 Accepted` con el `jobId`. 3. Consultar el endpoint `GET /api/etl/jobs/{jobId}/status` y observar la transición de estado hasta `EXITO`.
-    *   **Caso de Prueba 2 (Caso de Error - Duplicado):** 1. Enviar el mismo archivo CSV una segunda vez. **Resultado Esperado:** Recibir una respuesta `409 Conflict` con un mensaje indicando que el archivo ya fue procesado.
-
-*   **Commit de Referencia (Squashed):**
-    *   `[hash-del-commit-post-merge] - feat(etl): implementa pipeline de ingesta asincrónico (IOC-001) (#PR)`
----
+*   **Commit(s) de Referencia:**
+    *   **Backend:** `[hash-backend]` - `feat(etl): implementa pipeline de ingesta asincrónico`
+    *   **Frontend:** `fa8aa8b` - `feat(admin): Implementar y refactorizar vista de ingesta de datos`
 
 
 ---

@@ -164,5 +164,33 @@ export interface EtlJobStatusDto {
 ## 6. Resumen y Próximos Pasos
 - Backend: estos endpoints están implementados en el código de producción (EtlController) y protegidos por JWT; el rate limiting aplica a la ruta `/api/etl/**`.
 - Frontend: usar este documento como fuente de verdad para la integración. Para subidas, enviar el archivo como `multipart/form-data` en la parte `file`.
-- Si se detectan nuevas rutas o DTOs, regenerar este brief.
+## 7. Estado del Frontend y Plan de Integración (IOC-001)
+
+*   **Estado Actual:** ✅ **UI Completada.** La vista de Ingesta de Datos (`DataIngestionPage`) y todos sus componentes asociados (`DataUploadDropzone`, `UploadHistoryTable`, etc.) están construidos y son funcionalmente completos, pero utilizan datos simulados (`mocks`).
+
+*   **Trabajo Pendiente para la Integración:** Para completar la historia de usuario `IOC-001`, se deben realizar los siguientes pasos en el frontend:
+
+    1.  **Crear un Servicio de API (`apiService.ts`):**
+        *   **Acción:** Crear un nuevo archivo, por ejemplo `src/services/apiService.ts`.
+        *   **Contenido:** Este archivo contendrá una instancia de `axios` (o `fetch`) preconfigurada para incluir la URL base del backend y para añadir automáticamente el token JWT de Supabase en la cabecera `Authorization` de cada petición.
+
+    2.  **Implementar la Lógica de Subida de Archivos:**
+        *   **Acción:** En `DataIngestionPage.tsx`, modificar la función `handleFileSelect`.
+        *   **Lógica:**
+            *   Llamar al nuevo `apiService` para hacer la petición `POST /api/etl/start-process` con el archivo.
+            *   Al recibir la respuesta `202 Accepted`, guardar el `jobId` en el estado.
+            *   Iniciar un mecanismo de *polling* (ej. `setInterval`) que llame periódicamente a `GET /api/etl/jobs/{jobId}/status`.
+
+    3.  **Implementar la Lógica de Polling y Actualización de UI:**
+        *   **Acción:** Crear una función que maneje el polling.
+        *   **Lógica:**
+            *   Cada X segundos, llamar al endpoint de estado del job.
+            *   Cuando el estado del job cambie a "EXITO" o "FALLO", detener el polling.
+            *   Actualizar la tabla `UploadHistoryTable` con la información recibida del backend.
+            *   Mostrar una notificación de éxito o error (`toast`) con el mensaje apropiado.
+
+    4.  **Manejo de Errores de API:**
+        *   **Acción:** Envolver las llamadas de la API en bloques `try/catch`.
+        *   **Lógica:** Capturar los errores (ej. 400, 409, 401) y mostrar un mensaje de error claro al usuario utilizando `toast.error()`.
+
 

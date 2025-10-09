@@ -1,93 +1,55 @@
-# Sprint 1 – Sprint Backlog (Flujo de Datos y Seguridad)
+# Sprint 1 – Sprint Backlog (El Ciclo de Valor Completo)
 
 ## Objetivo del Sprint
-Entregar el esqueleto funcional del sistema: autenticación, layout y rutas protegidas, junto con el flujo de carga/validación de archivos CSV de producción de extremo a extremo en Supabase.
+Entregar un ciclo de valor de extremo a extremo: un usuario podrá autenticarse, cargar datos de producción a través de un archivo CSV y visualizar inmediatamente un dashboard con KPIs y gráficos que reflejen esa nueva información.
 
-## Historias comprometidas
+## Historias Comprometidas
 | ID | Título | Tipo | Feature | Prioridad | SP | Asignado | Estado |
-| --- | --- | --- | --- | --- | ---: | --- | --- |
-| IOC-001 | Cargar y validar un archivo CSV con datos de producción | Historia de Usuario | Ingesta de Datos | Crítica | 5 | Boris | Por Hacer |
-| IOC-021 | Como Usuario, quiero iniciar sesión en la plataforma | Historia de Usuario | Autenticación | Crítica | 5 | Jaime | Por Hacer |
-| IOC-022 | Como Usuario, quiero cerrar mi sesión de forma segura | Historia de Usuario | Autenticación | Crítica | 3 | Jaime | Por Hacer |
-| IOC-023 | Construir el Layout Principal y las Rutas Protegidas | Tarea Técnica | Infraestructura Frontend | Crítica | 8 | Jaime | Por Hacer |
+| :--- | :--- | :--- | :--- | :--- | :-: | :--- | :--- |
+| IOC-021 | Como Usuario, quiero iniciar sesión en la plataforma | Historia de Usuario | Autenticación | Crítica | 5 | Jaime | ✅ **Terminada** |
+| IOC-022 | Como Usuario, quiero cerrar mi sesión de forma segura | Historia de Usuario | Autenticación | Crítica | 3 | Jaime | ✅ **Terminada** |
+| IOC-023 | Construir el Layout Principal y las Rutas Protegidas | Tarea Técnica | Infraestructura Frontend | Crítica | 8 | Jaime | ✅ **Terminada** |
+| IOC-001 | Cargar y validar un archivo CSV con datos de producción | Historia de Usuario | Ingesta de Datos | Crítica | 5 | Boris | 🟡 **En Progreso** |
+| IOC-006a | Como Gerente, quiero visualizar un dashboard con sus gráficos y KPIs | Historia de Usuario | Visualización de Datos | Crítica | 13 | Boris | ❌ **Por Hacer** |
 
-## Criterios de aceptación trazados
-- IOC-001: - La interfaz permite seleccionar y subir un archivo CSV. - El sistema rechaza archivos con formato incorrecto (ej. columnas faltantes). - Se muestra una notificación de éxito o error al finalizar la carga.
-- IOC-021: - El usuario puede ingresar con email y contraseña. - Se muestra un error si las credenciales son incorrectas. - Tras el login exitoso, se redirige al dashboard principal.
-- IOC-022: - Al hacer clic en "Cerrar Sesión", se redirige a la página de login. - La sesión anterior queda invalidada (no se puede volver con el botón "Atrás").
-- IOC-023: - Se debe crear una estructura visual consistente (Navbar, Sidebar, etc.). - Las rutas deben redirigir al login si el usuario no está autenticado. - Las rutas de admin deben ser inaccesibles para roles no autorizados.
+## Checklist de Tareas del Sprint
 
-## Tareas técnicas por historia
-### IOC-001
-- Backend: endpoint multipart para upload; validación de cabeceras y esquema; parse seguro; inserción en lotes con transacciones; resumen de errores.
-- Backend: validadores de formato y negocio (fechas, IDs de máquina); manejo de duplicados (checksum o nombre+fecha); métricas y logs.
-- Frontend: formulario de carga con estados (progreso/éxito/error); mensajes de validación; pruebas con archivos vacíos y malformados.
-### IOC-021
-- Frontend: pantalla de login; integración con Supabase Auth; manejo de errores y loading.
-- Backend: verificación de token en la capa API (si aplica), CORS y endurecimiento básico de seguridad.
-### IOC-022
-- Frontend: acción de logout; limpieza de sesión/estado; redirección a login y verificación de acceso denegado post-logout.
-- Backend: invalidación de sesión/token en servidor (si aplica); pruebas de acceso a rutas protegidas tras logout.
-### IOC-023
-- Frontend: layout persistente (Navbar/Sidebar/Contenido) y router; guard de rutas por rol con redirección a login/403.
-- Frontend: estructura base (features/components/services/hooks) y placeholders para vistas futuras.
+| ID | Capa | Historia | Responsable | Tarea Técnica | Estado |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **BE-TASK-01** | Backend | `IOC-021` | Jaime | Configurar Spring Security, CORS y dependencias de JWT. | ✅ **Terminada** |
+| **BE-TASK-02** | Backend | `IOC-023` | Jaime | Implementar `JwtRequestFilter` para validar tokens en cada petición. | ✅ **Terminada** |
+| **BE-TASK-03** | Backend | `IOC-021` | Jaime | Crear `AuthController` y `AuthService` para manejar el login y la generación de JWT. | ✅ **Terminada** |
+| **FE-TASK-01** | Frontend | `IOC-021` | Jaime | Crear vistas y componentes para el flujo de autenticación (SignIn, SignUp, etc.). | ✅ **Terminada** |
+| **FE-TASK-02** | Frontend | `IOC-021` | Jaime | Integrar vistas de autenticación con Supabase Auth y `react-hot-toast`. | ✅ **Terminada** |
+| **FE-TASK-03** | Frontend | `IOC-022` | Jaime | Implementar la lógica de `signOut` robusta en `UserDropdown` y `AccountPage`. | ✅ **Terminada** |
+| **FE-TASK-04** | Frontend | `IOC-023` | Jaime | Crear el componente `ProtectedRoute` para validar la sesión del usuario. | ✅ **Terminada** |
+| **FE-TASK-05** | Frontend | `IOC-023` | Jaime | Crear el `AppLayout` principal (Sidebar, Header, etc.). | ✅ **Terminada** |
+| **FE-TASK-06** | Frontend | `IOC-023` | Jaime | Limpiar `App.tsx` y `AppSidebar.tsx` de rutas y enlaces de demostración. | ✅ **Terminada** |
+| **BE-TASK-04** | Backend | `IOC-001` | Boris | Definir Entidades JPA (`EtlJob`, etc.) y Repositorios. | ✅ **Terminada** |
+| **BE-TASK-05** | Backend | `IOC-001` | Boris | Crear `EtlController` con endpoints para `start-process` y `status`. | ✅ **Terminada** |
+| **BE-TASK-06** | Backend | `IOC-001` | Boris | Implementar `EtlJobService` para la gobernanza de jobs (creación, idempotencia). | ✅ **Terminada** |
+| **BE-TASK-07** | Backend | `IOC-001` | Boris | Implementar `EtlProcessingService` con lógica `@Async` para el procesamiento en segundo plano. | ✅ **Terminada** |
+| **BE-TASK-08** | Backend | `IOC-001` | Boris | Implementar `ParserService` y `DataSyncService` para la validación y persistencia transaccional. | ✅ **Terminada** |
+| **FE-TASK-07** | Frontend | `IOC-001` | Boris | Construir la UI de la página de Ingesta de Datos con datos simulados. | ✅ **Terminada** |
+| **FE-TASK-08** | Frontend | `IOC-001` | Boris | **(Pendiente)** Instalar `axios` y crear archivo de tipos `src/types/api.ts`. | ❌ **Por Hacer** |
+| **FE-TASK-09** | Frontend | `IOC-001` | Boris | **(Pendiente)** Crear `src/services/apiService.ts` con instancia de `axios` y `tokenProvider`. | ❌ **Por Hacer** |
+| **FE-TASK-10** | Frontend | `IOC-001` | Boris | **(Pendiente)** Implementar las funciones `startEtlProcess` y `getJobStatus` en `apiService.ts`. | ❌ **Por Hacer** |
+| **FE-TASK-11** | Frontend | `IOC-001` | Boris | **(Pendiente)** Crear un helper `src/utils/apiError.ts` para parsear errores del backend. | ❌ **Por Hacer** |
+| **FE-TASK-12** | Frontend | `IOC-001` | Boris | **(Pendiente)** Refactorizar `DataIngestionPage.tsx` para llamar a `startEtlProcess` al subir archivo. | ❌ **Por Hacer** |
+| **FE-TASK-13** | Frontend | `IOC-001` | Boris | **(Pendiente)** Implementar lógica de sondeo (`setInterval`) en `DataIngestionPage.tsx`. | ❌ **Por Hacer** |
+| **FE-TASK-14** | Frontend | `IOC-001` | Boris | **(Pendiente)** Implementar lógica de limpieza (`clearInterval`) en `useEffect`. | ❌ **Por Hacer** |
+| **FE-TASK-15** | Frontend | `IOC-001` | Boris | **(Pendiente)** Actualizar la UI de `UploadHistoryTable` con los datos reales obtenidos del sondeo. | ❌ **Por Hacer** |
+| **FE-TASK-16** | Frontend | `IOC-001` | Boris | **(Pendiente)** Crear y configurar `.env` para la variable `VITE_API_BASE_URL`. | ❌ **Por Hacer** |
 
-## Definition of Done (DoD) del sprint
-- Criterios de aceptación verificados en ambiente de prueba con datos de ejemplo y casos de error.
-- Código versionado con build/checks automáticos; endpoints y documentación mínima para el frontend.
-- Rutas protegidas operativas; login/logout funcionales; carga de CSV valida/rechaza correctamente e inserta datos en Supabase.
-- Demo de fin de sprint del flujo end-to-end: autenticación → carga CSV → confirmación y verificación en base de datos.
+## Criterios de Aceptación Trazados
+- **IOC-021:** El usuario puede ingresar con email/contraseña y recibe feedback de error.
+- **IOC-022:** El logout invalida la sesión y previene el acceso con el historial del navegador.
+- **IOC-023:** La aplicación tiene un layout consistente y las rutas están protegidas.
+- **IOC-001:** La UI permite la carga de archivos CSV y da feedback. La integración con el backend está pendiente.
+- **IOC-006a:** El dashboard debe mostrar gráficos y KPIs con estados de carga claros.
 
-## Entregables del sprint
-- Frontend: login/logout, layout y rutas protegidas; vista de carga de CSV con feedback.
-- Backend: upload/validación/ingesta CSV; logs y mensajes de error consistentes; verificación de token (si aplica).
-- Artefactos: registro de pruebas (válido/invalidos/duplicados); guía breve para probar el flujo.
-
-## Métricas y capacidad
-- Alcance: 4 historias, 21 SP.
-- Seguimiento: burnup/burndown por historia; tiempo de ciclo por tarea; % de cargas rechazadas correctamente en pruebas.
-
-## Riesgos e impedimentos a monitorear
-- Variabilidad del formato CSV (nombres de columnas/encoding) que afecte la validación e inserción en lote.
-- Integración de autenticación y guard de rutas que bloquee pruebas end-to-end si no se alinea temprano.
-- Latencia en inserciones si faltan índices/claves en tablas objetivo de Supabase.
-
-## Plan de pruebas del sprint
-- Casos happy-path y negativos por historia basados en criterios de aceptación.
-- Pruebas manuales E2E: login → carga CSV (válido, malformado, vacío, duplicado) → verificación de persistencia/errores → logout.
-
-
-## Desglose de Tareas Técnicas 
-
-Para lograr el objetivo, desglosamos las historias en las siguientes tareas técnicas específicas para Backend y Frontend:
-
-#### **A. Tareas de Autenticación y Estructura (Responsable: Jaime)**
-
-| Historia | Capa | Tarea Técnica |
-| :--- | :--- | :--- |
-| `IOC-021` | Backend | **1.** Configurar `Spring Security` para la gestión de autenticación y autorización. |
-| `IOC-021` | Backend | **2.** Crear un `AuthController` con endpoints para login (`/api/auth/login`). |
-| `IOC-021` | Backend | **3.** Implementar un `AuthService` que se comunique con Supabase Auth para validar credenciales. |
-| `IOC-021` | Backend | **4.** Implementar la generación de un token `JWT` (JSON Web Token) en caso de login exitoso. |
-| `IOC-022` | Backend | **5.** Implementar un endpoint de logout (`/api/auth/logout`) que gestione la invalidación del token si es necesario (ej. blacklist). |
-| `IOC-023` | Backend | **6.** Configurar el filtro de seguridad de Spring (`JwtRequestFilter`) para validar el JWT en cada petición a rutas protegidas. |
-| `IOC-021` | Frontend | **7.** Crear la vista/componente de `LoginPage` con el formulario de email y contraseña. |
-| `IOC-022` | Frontend | **8.** Implementar el `AuthService` en React para llamar a los endpoints de login/logout. |
-| `IOC-023` | Frontend | **9.** Configurar `React Router` con la lógica de Rutas Públicas (`/login`) y Rutas Protegidas (`/admin`, `/dashboard`). |
-| `IOC-023` | Frontend | **10.** Crear el componente `LayoutPrincipal` (con `Navbar`, `Sidebar` y área de contenido) que envuelva las rutas protegidas. |
-| `IOC-022` | Frontend | **11.** Implementar la lógica para almacenar/eliminar el JWT de forma segura en el cliente (ej. `localStorage` o `sessionStorage`). |
-
-#### **B. Tareas de Ingesta de Datos (Responsable: Boris)**
-
-| Historia | Capa | Tarea Técnica |
-| :--- | :--- | :--- |
-| `IOC-001` | Backend | **1.** Crear la entidad JPA (`ProductionData`) que mapee la estructura de la tabla de datos de producción. |
-| `IOC-001` | Backend | **2.** Crear el `DataIngestionController` con un endpoint `POST /api/admin/data/upload` que acepte un `MultipartFile`. |
-| `IOC-001` | Backend | **3.** Implementar un `CsvProcessingService` para leer y parsear el archivo CSV (usando una librería como `OpenCSV`). |
-| `IOC-001` | Backend | **4.** Dentro del servicio, implementar la lógica de validación de cabeceras y de datos a nivel de fila. |
-| `IOC-001` | Backend | **5.** Crear un `ProductionDataRepository` (Spring Data JPA) para guardar los registros válidos en la base de datos. |
-| `IOC-001` | Backend | **6.** Implementar un manejo de errores robusto que reporte qué filas fallaron y por qué. |
-| `IOC-001` | Frontend | **7.** Crear la vista/componente `AdminDataUploadPage` dentro de una ruta protegida (`/admin/upload`). |
-| `IOC-001` | Frontend | **8.** Construir el componente de UI para seleccionar un archivo (`<input type="file">`) y un botón para iniciar la carga. |
-| `IOC-001` | Frontend | **9.** Implementar la llamada al servicio API del frontend que envíe el archivo al backend. |
-| `IOC-001` | Frontend | **10.** Gestionar el estado de la UI durante la carga (mostrar un `spinner`) y mostrar notificaciones de éxito o error basadas en la respuesta del backend. |
+## Definition of Done (DoD) del Sprint
+- Criterios de aceptación de todas las historias verificados.
+- Código versionado con build/checks automáticos.
+- Flujo completo operativo: login → carga CSV → visualización de datos en el dashboard → logout.
+- Demo de fin de sprint del flujo end-to-end.
