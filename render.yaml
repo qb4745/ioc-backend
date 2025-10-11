@@ -7,19 +7,9 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     healthCheckPath: /actuator/health
+    envVarGroups:
+      - name: ioc-secrets # Vincula el grupo de secretos completo aquí
     envVars:
+      # Solo las variables no secretas se definen individualmente aquí
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      # Las siguientes variables tomarán su valor del grupo "ioc-secrets"
-      - key: SPRING_DATASOURCE_URL
-        fromGroup: ioc-secrets
-      - key: SPRING_DATASOURCE_USERNAME
-        fromGroup: ioc-secrets
-      - key: SPRING_DATASOURCE_PASSWORD
-        fromGroup: ioc-secrets
-      - key: METABASE_SECRET_KEY
-        fromGroup: ioc-secrets
-      - key: SUPABASE_JWT_ISSUER_URI
-        fromGroup: ioc-secrets
-      - key: METABASE_URL
-        fromGroup: ioc-secrets
