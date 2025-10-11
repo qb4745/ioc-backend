@@ -9,16 +9,10 @@ services:
     plan: free
     healthCheck:
       path: /actuator/health
-    # Variables de entorno para conectar a Supabase
+    # Variables de entorno para conectar a Supabase y otros servicios.
+    # Estas variables se deben crear como un "Environment Group" en el dashboard de Render.
+    envVarGroups:
+      - name: ioc-secrets
     envVars:
-      - key: SPRING_DATASOURCE_URL
-        value: "jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres?reWriteBatchedInserts=true"
-      - key: SPRING_DATASOURCE_USERNAME
-        value: "postgres.bdyvzjpkycnekjrlqlfp"
-      - key: SPRING_DATASOURCE_PASSWORD
-        # Esto le dice a Render que use un "Secret" que crearás en su dashboard
-        fromSecret:
-          name: supabase-credentials
-          key: SUPABASE_DB_PASSWORD
       - key: SPRING_PROFILES_ACTIVE
         value: prod
