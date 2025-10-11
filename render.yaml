@@ -6,10 +6,14 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
+    region: oregon
     healthCheckPath: /actuator/health
-    envVarGroups:
-      - name: ioc-secrets # Vincula el grupo de secretos completo aquí
+    autoDeploy: true
     envVars:
-      # Solo las variables no secretas se definen individualmente aquí
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      - key: SERVER_PORT
+        value: 8080
+      - key: JAVA_OPTS
+        value: "-Xmx400m -Xms200m"
+      - fromGroup: ioc-secrets
