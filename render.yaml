@@ -1,18 +1,25 @@
 # render.yaml - Blueprint for deploying the IOC Backend on Render
 
 services:
-  # El servicio web para la aplicación Spring Boot
   - type: web
     name: ioc-backend
     runtime: docker
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheck:
-      path: /actuator/health
-    # Variables de entorno para conectar a Supabase y otros servicios.
-    # Estas variables se deben crear como un "Environment Group" en el dashboard de Render.
-    envVarGroups:
-      - name: ioc-secrets
+    healthCheckPath: /actuator/health
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
+      # Las siguientes variables tomarán su valor del grupo "ioc-secrets"
+      - key: SPRING_DATASOURCE_URL
+        fromGroup: ioc-secrets
+      - key: SPRING_DATASOURCE_USERNAME
+        fromGroup: ioc-secrets
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromGroup: ioc-secrets
+      - key: METABASE_SECRET_KEY
+        fromGroup: ioc-secrets
+      - key: SUPABASE_JWT_ISSUER_URI
+        fromGroup: ioc-secrets
+      - key: METABASE_URL
+        fromGroup: ioc-secrets
