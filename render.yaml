@@ -1,0 +1,24 @@
+# render.yaml - Blueprint for deploying the IOC Backend on Render
+
+services:
+  # El servicio web para la aplicación Spring Boot
+  - type: web
+    name: ioc-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheck:
+      path: /actuator/health
+    # Variables de entorno para conectar a Supabase
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: "jdbc:postgresql://aws-1-sa-east-1.pooler.supabase.com:5432/postgres?reWriteBatchedInserts=true"
+      - key: SPRING_DATASOURCE_USERNAME
+        value: "postgres.bdyvzjpkycnekjrlqlfp"
+      - key: SPRING_DATASOURCE_PASSWORD
+        # Esto le dice a Render que use un "Secret" que crearás en su dashboard
+        fromSecret:
+          name: supabase-credentials
+          key: SUPABASE_DB_PASSWORD
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
