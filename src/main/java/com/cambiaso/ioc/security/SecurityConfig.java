@@ -51,7 +51,10 @@ public class SecurityConfig {
                     .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
                     // Sets the Content-Security-Policy header to allow embedding only from the same origin
                     .contentSecurityPolicy(csp -> csp
-                        .policyDirectives("frame-ancestors 'self'; default-src 'self'")
+                        .policyDirectives("frame-ancestors 'self' " +
+                                "https://treated-paste-eos-memo.trycloudflare.com; " +
+                                "style-src 'self' 'unsafe-inline'; " +
+                                "default-src 'self'")
                     )
                 );
 
