@@ -36,12 +36,13 @@ services:
       MB_DB_DBNAME: "${POSTGRES_DB}"
       MB_DB_USER: "${POSTGRES_USER}"
       MB_DB_PASS: "${POSTGRES_PASSWORD}"
-      MB_SITE_URL: "http://54.232.229.228:3000"
+      # Usa Cloudflare Tunnel para HTTPS (requerido para embedding desde Vercel)
+      MB_SITE_URL: "https://treated-paste-eos-memo.trycloudflare.com"
       MB_EMBEDDING_SECRET_KEY: "${METABASE_SECRET_KEY}"
       # Permite embedding desde localhost (dev) y Vercel (prod)
-      MB_EMBEDDING_APP_ORIGIN: "http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app"
+      MB_EMBEDDING_APP_ORIGIN: "http://localhost:5173 https://treated-paste-eos-memo.trycloudflare.com https://*.vercel.app"
       MB_ENABLE_EMBEDDING: "true"
-      MB_CONTENT_SECURITY_POLICY: "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app https://accounts.google.com data: blob:; frame-ancestors 'self' http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app; style-src 'self' 'unsafe-inline' http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app https://accounts.google.com;"
+      MB_CONTENT_SECURITY_POLICY: "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173 https://treated-paste-eos-memo.trycloudflare.com https://*.vercel.app https://accounts.google.com data: blob:; frame-ancestors 'self' http://localhost:5173 https://treated-paste-eos-memo.trycloudflare.com https://*.vercel.app; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173 https://treated-paste-eos-memo.trycloudflare.com https://*.vercel.app; style-src 'self' 'unsafe-inline' http://localhost:5173 https://treated-paste-eos-memo.trycloudflare.com https://*.vercel.app https://accounts.google.com;"
       MB_SITE_LOCALE: "es"
       JAVA_TIMEZONE: "America/Santiago"
     restart: unless-stopped
