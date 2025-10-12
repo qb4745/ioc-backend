@@ -7,6 +7,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -47,7 +48,7 @@ public class SecurityConfig {
                 // Add security headers for embedding protection
                 .headers(headers -> headers
                     // Disables the default X-Frame-Options header which is DENY
-                    .frameOptions(frameOptions -> frameOptions.sameOrigin())
+                    .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
                     // Sets the Content-Security-Policy header to allow embedding only from the same origin
                     .contentSecurityPolicy(csp -> csp
                         .policyDirectives("frame-ancestors 'self'; default-src 'self'")
@@ -61,7 +62,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Specify allowed origins (e.g., your frontend application's URL)
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "http://localhost:5173"));
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:3000", 
+                "http://localhost:5173",
+                "https://ioc-frontend-git-chore-configmetabase-a-8166e5-qb4745s-projects.vercel.app"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
         configuration.setExposedHeaders(Arrays.asList("Retry-After", "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset"));
