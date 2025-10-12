@@ -56,3 +56,6 @@ Thumbs.db
 
 # 8. Env
 .env
+
+# Ignore environment-specific properties files
+/src/main/resources/application-*.properties

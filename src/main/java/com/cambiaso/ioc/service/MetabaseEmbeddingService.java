@@ -181,8 +181,7 @@ public class MetabaseEmbeddingService {
             .claim("params", params)
             .setExpiration(new Date(System.currentTimeMillis() + expirationMillis))
             .setIssuedAt(new Date())
-            .signWith(key) // Volvemos a la firma implícita
-            // .signWith(key, Jwts.SIG.HS256) // TODO: Forzar HS256 si se sospecha de discrepancia de algoritmo
+            .signWith(key, Jwts.SIG.HS256)  // CRÍTICO: Metabase requiere HS256, no HS512
             .compact();
     }
 }

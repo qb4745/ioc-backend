@@ -27,9 +27,6 @@ services:
         condition: service_healthy
     ports:
       - "3000:3000"
-    dns:
-      - 8.8.8.8
-      - 1.1.1.1
     env_file:
       - .env
     environment:
@@ -39,11 +36,12 @@ services:
       MB_DB_DBNAME: "${POSTGRES_DB}"
       MB_DB_USER: "${POSTGRES_USER}"
       MB_DB_PASS: "${POSTGRES_PASSWORD}"
-      # ⚠️ DEBE COINCIDIR CON metabase.site-url del backend
-      MB_SITE_URL: "https://treated-paste-eos-memo.trycloudflare.com"
+      MB_SITE_URL: "http://54.232.229.228:3000"
       MB_EMBEDDING_SECRET_KEY: "${METABASE_SECRET_KEY}"
-      # Permitir embedding desde Vercel
-      MB_EMBEDDING_APP_ORIGIN: "https://tu-app.vercel.app"
+      # Permite embedding desde localhost (dev) y Vercel (prod)
+      MB_EMBEDDING_APP_ORIGIN: "http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app"
+      MB_ENABLE_EMBEDDING: "true"
+      MB_CONTENT_SECURITY_POLICY: "default-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app https://accounts.google.com data: blob:; frame-ancestors 'self' http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app; style-src 'self' 'unsafe-inline' http://localhost:5173 http://54.232.229.228:3000 https://*.vercel.app https://accounts.google.com;"
       MB_SITE_LOCALE: "es"
       JAVA_TIMEZONE: "America/Santiago"
     restart: unless-stopped
