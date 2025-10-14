@@ -35,3 +35,14 @@ Este documento centraliza todas las URLs relevantes para los diferentes entornos
   - `https://ioc-backend.onrender.com/actuator/health/etl`
 
 ---
+
+---
+
+### Recursos Adicionales
+
+- **Presentación del Proyecto (Google Slides):**
+  - `https://docs.google.com/presentation/d/182pU4qfSpSYkUAAJ5hjJ2NGmslGYTvvuWNWHtpJd-EM/edit`
+
+- **Carpeta de Evidencias (Google Drive):**
+  - `https://drive.google.com/drive/u/0/folders/1sf3j3vEZ2Xk54gJj30ir6jfG7kHvHfl8`
+
