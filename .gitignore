@@ -22,6 +22,9 @@ target/
 # Previene que se comiteen credenciales o configuraciones locales.
 application-local.properties
 
+# Ignore local Spring Boot profile that contains secrets
+src/main/resources/application-local.properties
+
 # 6. IDE & Editor Configuration
 # STS
 .apt_generated
