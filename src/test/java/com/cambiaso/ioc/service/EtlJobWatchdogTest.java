@@ -36,7 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
         "etl.jobs.watchdog.enabled=true",
         "etl.jobs.watchdog.interval-ms=999999",
         "etl.jobs.stuck.threshold-minutes=1", // Cambio de 0 a 1 para detectar job backdateado a -5 min
-        "etl.retry.unique.enabled=false"
+        "etl.retry.unique.enabled=false",
+        "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 @Import({EtlJobService.class, DataSyncService.class, EtlJobWatchdog.class, EtlJobWatchdogTest.TestConfig.class})
 class EtlJobWatchdogTest {

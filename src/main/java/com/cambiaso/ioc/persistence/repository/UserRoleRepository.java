@@ -16,6 +16,8 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UserRoleKey>
 
     boolean existsByIdRoleId(Integer roleId);
 
+    long countByIdRoleId(Integer roleId);
+
     @Modifying
     @Transactional
     void deleteByIdUserIdAndIdRoleId(Long userId, Integer roleId);
@@ -23,4 +25,3 @@ public interface UserRoleRepository extends JpaRepository<UserRole, UserRoleKey>
     @Query("SELECT r.name FROM UserRole ur JOIN ur.role r WHERE ur.id.userId = :userId ORDER BY r.name")
     List<String> findRoleNamesByUserId(@Param("userId") long userId);
 }
-

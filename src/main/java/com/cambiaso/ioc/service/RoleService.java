@@ -1,8 +1,10 @@
 package com.cambiaso.ioc.service;
 
 import com.cambiaso.ioc.dto.request.RoleRequest;
+import com.cambiaso.ioc.dto.response.RoleResponse;
 import com.cambiaso.ioc.exception.ResourceConflictException;
 import com.cambiaso.ioc.exception.ResourceNotFoundException;
+import com.cambiaso.ioc.mapper.RoleMapper;
 import com.cambiaso.ioc.persistence.entity.Role;
 import com.cambiaso.ioc.persistence.repository.RolePermissionRepository;
 import com.cambiaso.ioc.persistence.repository.RoleRepository;
@@ -13,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -21,6 +25,7 @@ public class RoleService {
     private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final RolePermissionRepository rolePermissionRepository;
+    private final RoleMapper roleMapper;
 
     @Transactional(readOnly = true)
     public Page<Role> search(String search, Pageable pageable) {
@@ -31,6 +36,24 @@ public class RoleService {
     public Role getById(Integer id) {
         return roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public RoleResponse getByIdWithDetails(Integer id) {
+        Role role = getById(id);
+        return enrichResponse(role);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<RoleResponse> searchWithDetails(String search, Pageable pageable) {
+        Page<Role> roles = search(search, pageable);
+        return roles.map(this::enrichResponse);
+    }
+
+    private RoleResponse enrichResponse(Role role) {
+        long usersCount = userRoleRepository.countByIdRoleId(role.getId());
+        List<String> permissions = rolePermissionRepository.findPermissionNamesByRoleId(role.getId());
+        return roleMapper.toResponse(role, usersCount, permissions);
     }
 
     public Role create(RoleRequest request) {
@@ -69,4 +92,3 @@ public class RoleService {
         roleRepository.delete(role);
     }
 }
-

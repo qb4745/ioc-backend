@@ -3,7 +3,6 @@ package com.cambiaso.ioc.controller;
 import com.cambiaso.ioc.controller.admin.RoleController;
 import com.cambiaso.ioc.dto.response.RoleResponse;
 import com.cambiaso.ioc.mapper.RoleMapper;
-import com.cambiaso.ioc.persistence.entity.Role;
 import com.cambiaso.ioc.service.RoleService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,7 +22,8 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @ExtendWith(MockitoExtension.class)
 class RoleControllerTest {
@@ -47,15 +47,41 @@ class RoleControllerTest {
     }
 
     @Test
-    void search_ok_returns200() throws Exception {
-        Role r = new Role();
-        r.setId(1);
-        r.setName("ADMIN");
-        Page<Role> page = new PageImpl<>(List.of(r));
-        Mockito.when(roleService.search(eq("adm"), any(PageRequest.class))).thenReturn(page);
-        Mockito.when(roleMapper.toResponse(any(Role.class))).thenReturn(new RoleResponse());
+    void search_ok_returns200WithEnrichedData() throws Exception {
+        RoleResponse resp = new RoleResponse();
+        resp.setId(1);
+        resp.setName("ADMIN");
+        resp.setUsersCount(10);
+        resp.setPermissions(new java.util.ArrayList<>(List.of("READ", "WRITE")));
+
+        Page<RoleResponse> page = new PageImpl<>(List.of(resp), PageRequest.of(0, 1), 1);
+        Mockito.when(roleService.searchWithDetails(eq("adm"), any(PageRequest.class))).thenReturn(page);
 
         mockMvc.perform(get("/api/admin/roles").param("search", "adm"))
-                .andExpect(status().isOk());
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].name").value("ADMIN"))
+                .andExpect(jsonPath("$.content[0].usersCount").value(10))
+                .andExpect(jsonPath("$.content[0].permissions[0]").value("READ"));
+    }
+
+    @Test
+    void getById_ok_returnsEnrichedResponse() throws Exception {
+        RoleResponse resp = new RoleResponse();
+        resp.setId(5);
+        resp.setName("OPERATOR");
+        resp.setUsersCount(3);
+        resp.setPermissions(new java.util.ArrayList<>(List.of("VIEW")));
+
+        Mockito.when(roleService.getByIdWithDetails(5)).thenReturn(resp);
+
+        mockMvc.perform(get("/api/admin/roles/5"))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(5))
+                .andExpect(jsonPath("$.name").value("OPERATOR"))
+                .andExpect(jsonPath("$.usersCount").value(3))
+                .andExpect(jsonPath("$.permissions[0]").value("VIEW"));
     }
 }

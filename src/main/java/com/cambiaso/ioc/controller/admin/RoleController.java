@@ -8,14 +8,11 @@ import com.cambiaso.ioc.service.RoleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/roles")
@@ -31,33 +28,29 @@ public class RoleController {
             @RequestParam(value = "search", required = false) String search,
             Pageable pageable) {
         Pageable effective = clamp(pageable);
-        Page<Role> page = roleService.search(search, effective);
-        List<RoleResponse> content = page.getContent().stream()
-                .map(roleMapper::toResponse)
-                .toList();
-        Page<RoleResponse> mapped = new PageImpl<>(content, effective, page.getTotalElements());
-        return ResponseEntity.ok(mapped);
+        Page<RoleResponse> page = roleService.searchWithDetails(search, effective);
+        return ResponseEntity.ok(page);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<RoleResponse> getById(@PathVariable Integer id) {
-        Role role = roleService.getById(id);
-        return ResponseEntity.ok(roleMapper.toResponse(role));
+        RoleResponse response = roleService.getByIdWithDetails(id);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<RoleResponse> create(@Valid @RequestBody RoleRequest request) {
         Role created = roleService.create(request);
-        return ResponseEntity.ok(roleMapper.toResponse(created));
+        return ResponseEntity.ok(roleMapper.toResponse(created, 0, java.util.Collections.emptyList()));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<RoleResponse> update(@PathVariable Integer id, @Valid @RequestBody RoleRequest request) {
         Role updated = roleService.update(id, request);
-        return ResponseEntity.ok(roleMapper.toResponse(updated));
+        return ResponseEntity.ok(roleService.getByIdWithDetails(updated.getId()));
     }
 
     @DeleteMapping("/{id}")
@@ -73,4 +66,3 @@ public class RoleController {
         return PageRequest.of(page, size, pageable.getSort());
     }
 }
-
