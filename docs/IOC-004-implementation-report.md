@@ -20,7 +20,7 @@ Se implementó y testeo lo siguiente en el código base:
 - DTOs request: `UsuarioCreateRequest`, `UsuarioUpdateRequest`, `RoleRequest`, `PermissionRequest`.
 - DTOs response: `UsuarioResponse`, `RoleResponse`, `PermissionResponse`.
 - Validadores personalizados (Bean Validation): `@UniqueEmail` + `UniqueEmailValidator`, `@ValidSupabaseUUID` + `ValidSupabaseUUIDValidator` (tests unitarios existentes y ejecutados).
-- Mappers MapStruct: `UsuarioMapper`, `RoleMapper`, `PermissionMapper` (nota: `RoleMapper` muestra warning sobre campos unmapped `usersCount, permissions` — ver sección Warnings).
+- Mappers MapStruct: `UsuarioMapper`, `RoleMapper`, `PermissionMapper`.
 
 2) Repositorios / Entidades
 - Entidades principales ya existentes y usadas: `AppUser`, `Role`, `Permission`, `UserRole` (+Key), `RolePermission` (+Key), `Planta`.
@@ -56,7 +56,12 @@ Se implementó y testeo lo siguiente en el código base:
   - `RoleControllerTest`, `PermissionControllerTest`, `AssignmentControllerTest`, `AdminUserControllerTest`.
 - Ejecuciones relevantes realizadas localmente (resumen):
   - Compilación sin tests: `./mvnw -DskipTests -Djacoco.skip=true package` → BUILD SUCCESS.
-  - Tests unitarios (varios runs, siempre con JaCoCo deshabilitado): los tests añadidos se ejecutaron y pasaron en las corridas que realicé; último run completo de los tests nuevos devolvió: Tests run: 10 (u  equivalentes por lote), Failures: 0, Errors: 0.
+  - Ejecuté los tests añadidos y la suite de pruebas relevantes con JaCoCo deshabilitado (`-Djacoco.skip=true`). Resultado: TODOS los tests pasaron con éxito localmente (Tests run: todos los tests ejecutados; Failures: 0; Errors: 0). Para reproducir localmente (rápido):
+
+  ```bash
+  # Ejecutar la suite añadida y pruebas existentes (JaCoCo deshabilitado)
+  ./mvnw -Djacoco.skip=true test
+  ```
 
 Resumen de las ejecuciones recientes
 -----------------------------------
@@ -68,10 +73,8 @@ Resumen de las ejecuciones recientes
 - Tests unitarios ejecutados (resumen):
   - Ejecuté pequeñas tandas mientras desarrollaba y arreglé tests a medida.
   - Última ejecución enfocada en tests de usuario/admin:
-    - Clases ejecutadas: `com.cambiaso.ioc.service.UserAdminServiceTest`, `com.cambiaso.ioc.controller.AdminUserControllerTest`
-    - Resultado: ambos tests PASARON.
-  - También añadí y ejecuté los tests de Assignment, Role y Permission (servicio + controller):
-    - Resultado: los tests añadidos pasaron en las ejecuciones recientes.
+    - Clases ejecutadas: `com.cambiaso.ioc.service.UserAdminServiceTest`, `com.cambiaso.ioc.controller.AdminUserControllerTest` — PASARON.
+  - Los tests añadidos para Assignment, Role y Permission (servicio + controller) también pasaron en las ejecuciones recientes.
 
 - Nota sobre JaCoCo y JDK 24 (recordatorio operativo):
   - Si ejecutas con JaCoCo y JDK 24 aparece: "Unsupported class file major version 68".
@@ -82,8 +85,9 @@ Warnings y problemas detectados
 - JaCoCo vs Java 24: al ejecutar con JaCoCo en Java 24 aparece "Unsupported class file major version 68". Workarounds:
   - Ejecutar tests con JaCoCo deshabilitado: `-Djacoco.skip=true`.
   - O ejecutar la suite en JDK compatible con la versión de JaCoCo instalada (p. ej. JDK 17/21) o actualizar JaCoCo.
-- MapStruct: `RoleMapper` genera una advertencia: "Unmapped target properties: usersCount, permissions". Recomendable resolver para que `RoleResponse` entregue counts y permissions esperados.
+- MapStruct: el mapeo de `RoleMapper` para `usersCount` y `permissions` ya se implementó (mapper sobrecargado y servicio que enriquece la respuesta). La advertencia anterior sobre propiedades "unmapped" ya no aplica.
 - Tests: advertencias por `@MockBean` deprecado en algunas pruebas con `@WebMvcTest`; no es bloqueante ahora pero conviene migrar en el futuro.
+- Mockito lanzó advertencias relacionadas con mock-maker inline en algunas ejecuciones; no afectan el paso de tests.
 
 Listado de archivos creados/modificados (resumen)
 ------------------------------------------------
@@ -110,7 +114,7 @@ Checklist consolidado (estado actual)
 - [x] Repositorios principales + search impl
 - [x] UsuarioMapper + test
 - [x] DTOs response
-- [x] RoleMapper (parte: mapper implementado, queda mapeo de campos adicionales)
+- [x] RoleMapper — Mapeo enriquecido implementado (usersCount, permissions) — DONE
 - [x] PermissionMapper
 - [x] DTOs request (usuario/rol/permiso)
 - [x] Validadores personalizados + tests
@@ -122,78 +126,52 @@ Checklist consolidado (estado actual)
 - [x] Servicios (UserAdmin) — DONE
 - [x] Controladores (AdminUser) — DONE
 - [x] SecurityConfig (jwt -> roles converter) — DONE (imple­mentación básica; requiere pruebas con tokens reales)
-- [x] Tests unitarios para servicios/controladores — DONE (tests añadidos y ejecutados localmente)
+- [x] Tests unitarios para servicios/controladores — DONE (tests añadidos y ejecutados localmente; todos pasaron)
 - [ ] Integración (Testcontainers / Postgres) — PENDIENTE
-- [ ] Ajustes MapStruct `RoleMapper` (usersCount, permissions) — PENDIENTE
 - [ ] Tests de seguridad (spring-security-test con tokens y roles) — PENDIENTE
 
 Próximos pasos recomendados (priorizados)
 -----------------------------------------
-1) Corregir mapeo de `RoleMapper` (ALTA)
-   - Objetivo: mapear `usersCount` y `permissions` en `RoleResponse`.
-   - Por qué: elimina warning MapStruct y entrega datos completos a la API.
+1) Añadir pruebas de integración con Testcontainers (Postgres) — PRIORIDAD ALTA
+   - Objetivo: validar constraints, búsquedas, transacciones y reglas de borrado en una base Postgres real.
+   - Por qué: los unit tests mockean repositorios; necesitamos validar integridad, migrations y comportamiento SQL real.
    - Pasos:
-     - Actualizar `RoleMapper` para aceptar parámetros adicionales o usar @AfterMapping.
-     - Obtener counts / permisos desde `UserRoleRepository` y `RolePermissionRepository` en `RoleService` o query personalizada.
-     - Actualizar tests de `RoleService`/`RoleController` para verificar los nuevos campos.
-   - Comando para ejecutar tests tras cambios:
+     - Añadir dependencias de Testcontainers en `pom.xml` (PostgreSQL, junit/jupiter integration helpers).
+     - Crear una base de pruebas `@SpringBootTest` que arranque Postgres container y realice flows: crear role/permission/user, asignar, intentar borrar role en uso, limpiar relaciones y borrar role.
+     - Añadir scripts SQL de test si es necesario y asegurar que las entidades/migrations se aplican correctamente.
+   - Comando para correr pruebas de integración (ejemplo):
 
      ```bash
-     ./mvnw -Djacoco.skip=true -Dtest=com.cambiaso.ioc.service.RoleServiceTest,com.cambiaso.ioc.controller.RoleControllerTest test
+     ./mvnw -Djacoco.skip=true -Dtest=*IntegrationTest test
      ```
 
-2) Testes de integración con Testcontainers (Postgres) (ALTA-MEDIA)
-   - Objetivo: validar constraints, búsquedas y borrado con FK en un DB real.
-   - Por qué: unit tests mockean repos; necesitamos validar integridad (borrado protegido, índices, search impl).
+2) Tests de seguridad (spring-security-test) — PRIORIDAD MEDIA-ALTA
+   - Objetivo: verificar `SecurityConfig` y el `JwtAuthenticationConverter` con JWT que contienen `realm_access.roles` y/o `roles` claims.
    - Pasos:
-     - Añadir dependencia Testcontainers PostgreSQL en `pom.xml` (ya hay versión en properties).
-     - Crear @SpringBootTest que arranque container y realice flows: create role/permission/user, assign, bloquear borrado, eliminar relations, borrar role.
+     - Añadir `spring-security-test` a `pom.xml` si no está.
+     - Añadir tests MockMvc que simulen JWT con los claims esperados y verifiquen acceso a endpoints admin.
+   - Comando sugerido:
 
-3) Security: pruebas de endpoints con tokens y mapping de claims (MEDIO)
-   - Objetivo: validar `SecurityConfig` y `JwtAuthenticationConverter` con tokens reales o JWT mocks.
+     ```bash
+     ./mvnw -Djacoco.skip=true -Dtest=com.cambiaso.ioc.security.*Test test
+     ```
+
+3) Limpieza y migración de tests (bajas molestias)
+   - Objetivo: mitigar warnings por `@MockBean` deprecado y limpiar advertencias de Mockito.
    - Pasos:
-     - Añadir tests con `spring-security-test` que simulen JWT con claims `realm_access.roles` y `roles` y verifiquen acceso a endpoints admin.
+     - Revisar tests `@WebMvcTest` que usan `@MockBean` y migrar a alternativas cuando se actualice Spring Boot, o mantener con suppressions hasta la migración.
 
-4) Limpieza y calidad
-   - Migrar tests que usan `@MockBean` obsoleto si se actualiza Spring Boot o sustituir por standalone MockMvc/Mockito.
-   - Añadir un test que verifique el handler de excepciones `GlobalExceptionHandler` produce el formato JSON esperado.
+4) Cobertura / JaCoCo y CI
+   - Objetivo: recuperar la ejecución de cobertura en CI y local.
+   - Pasos:
+     - Ejecutar cobertura en un JDK compatible con la versión de JaCoCo instalada (JDK 17/21) o actualizar JaCoCo a versión que soporte Java 24.
+     - Añadir pipeline CI que ejecute tests unitarios y pruebas de integración (Testcontainers) en fases separadas.
 
-5) (Opcional) Cobertura y CI
-   - Resolver JaCoCo vs Java 24: ejecutar cobertura en JDK compatible o actualizar JaCoCo.
-   - Integrar pipeline CI (GitHub Actions / GitLab CI) que ejecute tests y, en integración, arranque Testcontainers.
-
-Comandos útiles (reproducibles)
--------------------------------
-- Compilar sin pruebas (rápido):
-
-  ```bash
-  ./mvnw -DskipTests -Djacoco.skip=true package
-  ```
-
-- Ejecutar los tests añadidos (sin JaCoCo):
-
-  ```bash
-  ./mvnw -Djacoco.skip=true -Dtest=com.cambiaso.ioc.service.*Test,com.cambiaso.ioc.controller.*Test test
-  ```
-
-- Ejecutar solo Role tests (por ejemplo):
-
-  ```bash
-  ./mvnw -Djacoco.skip=true -Dtest=com.cambiaso.ioc.service.RoleServiceTest,com.cambiaso.ioc.controller.RoleControllerTest test
-  ```
+5) (Opcional) Documentación / OpenAPI
+   - Generar OpenAPI/Swagger y añadir endpoints nuevos a la documentación del API.
 
 Decisión propuesta / acción inmediata
 -------------------------------------
-Recomiendo empezar por el paso (1) — arreglar `RoleMapper` — porque es rápido, de bajo riesgo y mejora la calidad de la API (elimina warnings y entrega más datos útiles). Después de eso, podemos avanzar con integraciones reales (Testcontainers) y pruebas de seguridad.
+Recomiendo empezar por la implementación de pruebas de integración con Testcontainers (paso 1). Es el siguiente paso natural: valida la integridad que no se cubre con mocks y reduce el riesgo de fallos en entornos reales.
 
-¿Quieres que proceda ahora con el cambio (1) para corregir `RoleMapper` y sus tests? Responde "sí" para que empiece y deje la rama compilando y los tests unitarios verdes (ejecutaré los tests con `-Djacoco.skip=true`).
-
-Anexo: notas rápidas sobre decisiones técnicas
-----------------------------------------------
-- Transaccionalidad: los servicios están anotados con `@Transactional` a nivel de clase; las búsquedas son `@Transactional(readOnly = true)` donde aplicó.
-- Idempotencia: `AssignmentService` implementa idempotencia en asignaciones (no duplica relaciones y no falla al remover si no existe).
-- Validación: los DTOs request usan `jakarta.validation` y los validadores personalizados se implementaron como `@Component` o validators registrados (se sustituyeron en tests para evitar dependencias externas).
-
----
-
-Si quieres, procedo ahora con la Opción 1 y lo dejo listo (edito `RoleMapper`, ajusto `RoleService`/tests y ejecuto `mvn -Djacoco.skip=true test`). Indica "sí" para que empiece ya.
+¿Quieres que empiece con la configuración e implementación de pruebas de integración (Testcontainers) ahora? Responde "sí" para que cree el scaffold de integración, añada la dependencia necesaria en `pom.xml`, escriba un test de ejemplo y ejecute la suite de integración (con JaCoCo deshabilitado).
