@@ -9,7 +9,7 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor // ANÁLISIS: Genera un constructor sin argumentos, requerido por JPA.
 @AllArgsConstructor // ANÁLISIS: Genera un constructor con todos los argumentos, útil para tests.
 @Entity // ANÁLISIS: Marca esta clase como una entidad JPA, lo que significa que se mapeará a una tabla.
-@Table(name = "permissions") // ANÁLISIS: Especifica que el nombre de la tabla en la BD es "permissions".
+@Table(name = "permission") // ANÁLISIS: Especifica que el nombre de la tabla en la BD es "permission".
 public class Permission {
 
     @Id // ANÁLISIS: Marca este campo como la clave primaria de la tabla.

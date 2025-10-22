@@ -12,7 +12,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "roles")
+@Table(name = "role")
 public class Role {
 
     @Id
@@ -27,9 +27,9 @@ public class Role {
     // crucial: los permisos de un rol solo se cargarán de la BD cuando se acceda a ellos explícitamente,
     // evitando consultas innecesarias.
     @JoinTable(
-            name = "role_permissions", // ANÁLISIS: Especifica el nombre de la tabla de unión.
-            joinColumns = @JoinColumn(name = "role_id"), // ANÁLISIS: La columna FK que apunta a esta entidad (Role).
-            inverseJoinColumns = @JoinColumn(name = "permission_id") // ANÁLISIS: La columna FK que apunta a la otra entidad (Permission).
+            name = "role_permission", // tabla de unión ahora en singular
+            joinColumns = @JoinColumn(name = "role_id"),
+            inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
     private Set<Permission> permissions = new HashSet<>();
     // ANÁLISIS: Usamos un 'Set' en lugar de 'List' porque un rol no puede tener el mismo permiso dos veces.

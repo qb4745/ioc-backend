@@ -1,0 +1,88 @@
+ID,Historia de Usuario (Título),Como (Rol),Quiero (Acción),Para (Beneficio),Criterios de Aceptación,Sprint
+IOC-001,Cargar Archivo de Datos de Producción,Administrador,cargar y validar archivos de producción.,asegurar que solo datos fiables y de alta calidad se carguen en la base de datos,"• Archivo CSV válido: Dado un archivo con formato correcto, al cargarlo, el sistema lo procesa sin error.
+• Archivo incorrecto: Dado un archivo con formato incorrecto, al intentar cargarlo, el sistema muestra un error claro.
+• Archivo duplicado: Dado un archivo ya cargado, al intentar cargarlo de nuevo, el sistema notifica al usuario y no lo procesa.
+• Archivo vacío: Dado un archivo CSV sin datos, al cargarlo, se notifica que está vacío y no se procesa.",Sprint 1: Fundación y Visualización
+IOC-002,Validar datos cargados automáticamente,Administrador,validar datos cargados automáticamente.,asegurar la calidad y precisión en los datos,"• Datos válidos: Al iniciar la validación de datos correctos, estos son aceptados sin errores.
+• Datos erróneos: Al validar datos con errores, el sistema los rechaza y muestra los errores.
+• Duplicados detectados: Durante la validación, el sistema marca y elimina datos duplicados.
+• Validación manual: Si la validación automática falla, se alerta al administrador para una revisión manual.",Sprint 3: Gobernanza y Administración
+IOC-003,"Gestionar Usuarios, Roles y Permisos",Administrador,configurar parámetros y umbrales de KPIs.,adaptar el sistema a las métricas de negocio que son más importantes para la empresa,"• Parámetros válidos: Al guardar parámetros dentro del rango permitido, estos se almacenan y aplican correctamente.
+• Parámetros inválidos: Al intentar guardar valores fuera de los límites, el sistema alerta sobre los valores no válidos.
+• KPIs activos: Al activar KPIs, se generan alertas si se exceden sus umbrales.
+• KPIs inactivos: Al desactivar KPIs, no se generan alertas para ellos.",Sprint 3: Gobernanza y Administración
+IOC-004,Gestionar usuarios y roles,Administrador,gestionar usuarios y roles.,controlar el acceso y proteger la información,"• Crear usuario válido: Al registrar un usuario con datos correctos, este es creado con sus roles asignados.
+• Modificar usuario válido: Al actualizar un usuario existente, los datos modificados se aplican correctamente.
+• Eliminar usuario: Al confirmar la eliminación de un usuario, este pierde el acceso inmediatamente.
+• Asignar roles con permisos: Al guardar roles para un usuario, sus accesos son controlados según los permisos definidos.",sin sprint para el mvp
+IOC-005,Recibir alertas en caso de desviaciones,Gerente,recibir alertas en caso de desviaciones.,reaccionar rápidamente a eventos críticos,"• Alerta generada: Cuando un KPI supera su umbral, se envía una notificación al gestor correspondiente.
+• Alerta vista: Cuando el gestor consulta sus alertas, la alerta se marca como revisada.
+• Configurar alertas: Al guardar nuevos parámetros de aviso, el sistema los utiliza para futuras alertas.
+• Escalación: Si una alerta no es respondida en el tiempo definido, se eleva a instancias superiores.",sin sprint para el mvp
+IOC-006,Visualizar Dashboard de Producción,Gerente,visualizar un dashboard con KPIs actualizados.,tomar decisiones informadas sobre la operación de manera rápida y eficiente,"• Dashboard carga exitosamente: Al acceder al dashboard con datos correctos, se muestran gráficos y métricas vigentes.
+• Aplicar filtros: Al seleccionar filtros, el dashboard actualiza la visualización según los criterios.
+• Manejo de errores: Si hay datos incompletos, se muestra un mensaje de error claro.
+• Actualización automática: El dashboard se refresca automáticamente para reflejar datos en tiempo real.",Sprint 1: Fundación y Visualización
+IOC-007,Recibir alertas automáticas,Gerente,recibir alertas automáticas.,detectar y reaccionar ante desviaciones críticas,"• Alerta enviada: Cuando el valor de un KPI excede el límite, se envía una notificación al destinatario.
+• Visualización de alertas: Al consultar el panel de alertas, estas son visibles y están ordenadas por prioridad.
+• Confirmar alerta: Cuando el usuario marca una alerta como revisada, su estado cambia y se registra la acción.
+• Escalación de alerta: Si una alerta no obtiene respuesta en el tiempo previsto, se notifica a un superior.",sin sprint para el mvp
+IOC-008,Comparar Desempeño entre Entidades,Gerente,comparar el desempeño entre turnos y líneas.,identificar patrones y oportunidades de mejora,"• Comparativa generada: Al aplicar filtros de rangos y entornos, los gráficos muestran la comparativa correcta.
+• Datos insuficientes: Al intentar visualizar una comparativa sin datos suficientes, se muestra un mensaje indicándolo.
+• Exportar resultados: Al solicitar una descarga, se genera un archivo PDF/Excel con los resultados.
+• Actualización dinámica: Al modificar filtros, los resultados se actualizan sin recargar toda la página.",Sprint 2: Interactividad y Filtros
+IOC-009,Analizar tendencias históricas,Gerente,analizar tendencias históricas.,planificar y evaluar el rendimiento a largo plazo,"• Históricos mostrados: Al seleccionar un periodo, se visualizan correctamente los gráficos y análisis de tendencias.
+• Comparación temporal: Al cambiar el intervalo de tiempo, los gráficos adaptan la información al nuevo rango.
+• Exportar informe: Al solicitar la descarga, el informe del análisis se exporta sin errores.
+• Mensaje de falta de datos: Si no existen datos en el periodo seleccionado, se informa al usuario.",sin sprint para el mvp
+IOC-010,Personalizar dashboards,Gerente,personalizar dashboards.,adaptar las vistas según necesidades particulares,"• Configuración guardada: Al guardar modificaciones de una vista, los cambios se aplican y reflejan correctamente.
+• Vista predeterminada: Al restaurar la configuración, el dashboard vuelve a su estado inicial.
+• Error en configuración: Al intentar guardar parámetros inválidos, se muestra un mensaje de error específico.
+• Compartir vistas: Cuando se comparte una configuración, el usuario receptor puede acceder a la vista personalizada.",sin sprint para el mvp
+IOC-011,Acceder desde dispositivos móviles,Gerente,acceder a la plataforma desde dispositivos móviles.,consultar KPIs y datos en cualquier momento y lugar,"• Acceso desde móvil válido: Al iniciar sesión desde un dispositivo compatible, se muestra una interfaz optimizada.
+• Acceso móvil con fallas: Si hay problemas de conexión, se muestra un mensaje de error con posibles soluciones.
+• Seguridad en acceso móvil: Tras un login exitoso, el usuario accede solo a las funciones y datos autorizados.
+• Logout en móvil: Al cerrar sesión, esta finaliza y el usuario es redirigido a la pantalla de login.",sin sprint para el mvp
+IOC-012,Filtrar Datos del Dashboard,Supervisor-Analista,"filtrar datos por línea, periodo y taller.",realizar análisis detallados y específicos,"• Aplicación de filtros: Al seleccionar filtros, los datos y reportes se actualizan correctamente.
+• Ningún dato tras filtro: Si los filtros no arrojan resultados, se muestra un mensaje indicando que no hay datos.
+• Filtros inválidos: Si se aplican parámetros incorrectos, el sistema muestra un error y no aplica el filtro.
+• Reset de filtros: Al limpiar los filtros, los datos vuelven a mostrarse en su estado completo por defecto.",Sprint 2: Interactividad y Filtros
+IOC-013,Reportar incidencias,Supervisor-Analista,reportar incidencias desde la plataforma.,facilitar la comunicación y resolución rápida de problemas,"• Incidencia reportada: Al enviar un formulario con datos completos, el sistema guarda el reporte y notifica al equipo.
+• Campos obligatorios faltantes: Al intentar enviar un reporte incompleto, el sistema avisa sobre los campos faltantes.
+• Incidencia duplicada: Al reportar una incidencia similar a una existente, el sistema alerta sobre la posible duplicidad.
+• Incidencia cerrada: El estado de una incidencia resuelta se refleja correctamente al consultarla.",sin sprint para el mvp
+IOC-014,Descargar reportes en PDF o Excel,Supervisor-Analista,descargar reportes en PDF o Excel.,compartir información con otras áreas,"• Reporte generado correctamente: Al descargar un reporte, el archivo se genera en el formato y rango seleccionados.
+• Reporte con errores: Si hay un problema en la generación, se muestra un error y se sugiere reintentar.
+• Formato no soportado: Si se elige un formato no válido, el sistema bloquea la descarga y alerta.
+• Reporte personalizado: El reporte descargado refleja los filtros personalizados aplicados por el usuario.",sin sprint para el mvp
+IOC-015,Exportar datos para análisis avanzados,Supervisor-Analista,exportar datos para análisis avanzados.,personalizar informes según necesidades específicas,"• Exportación exitosa: Al ejecutar una exportación, el archivo se genera en el formato y con los campos solicitados.
+• Exportación abortada: Si ocurre un error durante la exportación, se muestra un mensaje de error.
+• Restricción de datos: Al intentar exportar datos sensibles, el sistema previene la acción y muestra un aviso.
+• Notificación post-exportación: Al completarse la exportación, el usuario recibe una confirmación de éxito.",sin sprint para el mvp
+IOC-016,Definir filtros personalizados,Supervisor-Analista,definir filtros personalizados y consultas complejas.,profundizar en el análisis para obtener insights,"• Filtros aplicados exitosamente: Al aplicar un filtro, los datos reflejan los criterios correctamente.
+• Consulta no válida: Si una consulta está mal estructurada, se muestra un error con guías para corregirla.
+• Guardar filtros personalizados: El sistema permite guardar un conjunto de filtros para uso futuro.
+• Eliminar filtros: El sistema permite eliminar filtros guardados y actualiza el estado.",sin sprint para el mvp
+IOC-017,Participar en pruebas de usabilidad,Supervisor-Analista,participar en pruebas de usabilidad.,asegurar una experiencia intuitiva y eficaz,"• Prueba con usuarios reales: El feedback recogido durante la prueba es documentado correctamente.
+• Identificación de bugs: Los errores encontrados son replicados, documentados y asignados para corrección.
+• Mejoras sugeridas: Las sugerencias de los usuarios son recogidas y priorizadas para futuras mejoras.
+• Prueba finalizada: Al concluir la prueba, se entrega un documento de resultados para su aprobación.",sin sprint para el mvp
+IOC-018,Monitorizar indicadores en tiempo real,Supervisor-Analista,monitorizar indicadores clave en tiempo real.,detectar desviaciones y tomar decisiones rápidas,"• Indicadores actualizados: Los KPIs en el panel reflejan el estado de los datos en tiempo real.
+• Alerta automática: Cuando un KPI supera su umbral, el sistema emite una alerta inmediata.
+• Dashboard responsive: El dashboard se visualiza de forma adecuada y rápida en dispositivos móviles.
+• Reporte de desviaciones: Se puede generar y descargar un informe con el historial y análisis de desviaciones.",sin sprint para el mvp
+IOC-019,Gestionar Gráficos del Dashboard,Administrador,crear y gestionar las definiciones de los gráficos.,controlar qué visualizaciones están disponibles en los dashboards,"• Creación exitosa: Al guardar un nuevo gráfico con datos válidos, este aparece en la lista de gráficos disponibles.
+• Modificación y eliminación: Al editar o eliminar un gráfico, la lista se actualiza para reflejar el cambio.
+• Validación de datos: Al intentar guardar un gráfico sin un campo obligatorio, el sistema muestra un error y no guarda.",Sprint 3: Gobernanza y Administración
+IOC-020,Diseñar Disposición del Dashboard,Administrador,diseñar la disposición del dashboard principal.,controlar qué KPIs y gráficos son visibles para los usuarios finales,"• Acceso a la vista de diseño: La sección 'Diseño de Dashboard' carga una cuadrícula y la lista de componentes disponibles.
+• Añadir y quitar componentes: Al arrastrar componentes al lienzo o quitarlos, la interfaz refleja el cambio visualmente.
+• Guardado de la disposición: Al guardar la disposición, la nueva configuración se convierte en la vista por defecto para los usuarios.",Sprint 3: Gobernanza y Administración
+IOC-021,Iniciar Sesión en la Plataforma,Usuario,iniciar sesión en la plataforma.,acceder a las funcionalidades que corresponden a mi rol,"• Login exitoso: Al ingresar credenciales correctas, el sistema inicia sesión y redirige al dashboard.
+• Login fallido: Al ingresar credenciales incorrectas, el sistema muestra un mensaje de error y no permite el acceso.
+• Redirección post-login (opcional): Un administrador puede ser redirigido a una vista de administración por defecto.",Sprint 1: Fundación y Visualización
+IOC-022,Cerrar Sesión de Forma Segura,Usuario,cerrar sesión de forma segura.,proteger mi cuenta cuando termino de usar la plataforma,"• Cierre de sesión exitoso: Al hacer clic en 'Cerrar Sesión', el sistema finaliza la sesión y redirige a la página de login.
+• Invalidación de la sesión: Después de cerrar sesión, no se puede acceder a páginas protegidas usando el historial.
+• Visibilidad del botón de logout: El botón para cerrar sesión es claramente visible y accesible en todo momento.",Sprint 1: Fundación y Visualización
+IOC-023,Layout Principal y Rutas Protegidas,Usuario,navegar entre las secciones principales de la aplicación.,acceder fácilmente a las diferentes funcionalidades,"• Navegación completa (Admin): Un administrador ve todas las opciones en la barra de navegación.
+• Navegación limitada (Gerente): Un gerente ve únicamente las opciones relevantes para su rol.
+• Protección de rutas: Un usuario sin permisos no puede acceder a una URL de administración directamente.",Sprint 1: Fundación y Visualización
