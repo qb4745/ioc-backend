@@ -1,0 +1,284 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > SecurityConfig</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">com.cambiaso.ioc.security</a>
+</div>
+
+<h1>Coverage Summary for Class: SecurityConfig (com.cambiaso.ioc.security)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">SecurityConfig</td>
+<td class="coverageStat">
+  <span class="percent">
+    90%
+  </span>
+  <span class="absValue">
+    (9/10)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/8)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    62%
+  </span>
+  <span class="absValue">
+    (31/50)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">SecurityConfig$$SpringCGLIB$$0</td>
+  </tr>
+  <tr>
+    <td class="name">SecurityConfig$$SpringCGLIB$$FastClass$$0</td>
+  </tr>
+  <tr>
+    <td class="name">SecurityConfig$$SpringCGLIB$$FastClass$$1</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    90%
+  </span>
+  <span class="absValue">
+    (9/10)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/8)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    62%
+  </span>
+  <span class="absValue">
+    (31/50)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.security;
+&nbsp;
+&nbsp;import org.springframework.beans.factory.annotation.Value;
+&nbsp;import org.springframework.context.annotation.Bean;
+&nbsp;import org.springframework.context.annotation.Configuration;
+&nbsp;import org.springframework.core.convert.converter.Converter;
+&nbsp;import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+&nbsp;import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+&nbsp;import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+&nbsp;import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+&nbsp;import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+&nbsp;import org.springframework.security.config.http.SessionCreationPolicy;
+&nbsp;import org.springframework.security.core.GrantedAuthority;
+&nbsp;import org.springframework.security.core.authority.SimpleGrantedAuthority;
+&nbsp;import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+&nbsp;import org.springframework.security.oauth2.jwt.Jwt;
+&nbsp;import org.springframework.security.oauth2.jwt.JwtDecoder;
+&nbsp;import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+&nbsp;import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+&nbsp;import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+&nbsp;import org.springframework.security.web.SecurityFilterChain;
+&nbsp;import org.springframework.web.cors.CorsConfiguration;
+&nbsp;import org.springframework.web.cors.CorsConfigurationSource;
+&nbsp;import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+&nbsp;
+&nbsp;import java.util.ArrayList;
+&nbsp;import java.util.Collection;
+&nbsp;import java.util.List;
+&nbsp;import java.util.Map;
+&nbsp;import java.util.stream.Collectors;
+&nbsp;
+&nbsp;@Configuration
+&nbsp;@EnableWebSecurity
+&nbsp;@EnableMethodSecurity
+<b class="fc">&nbsp;public class SecurityConfig {</b>
+&nbsp;
+&nbsp;    @Value(&quot;${spring.security.oauth2.resourceserver.jwt.issuer-uri}&quot;)
+&nbsp;    private String issuerUri;
+&nbsp;
+&nbsp;    @Bean
+&nbsp;    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+<b class="fc">&nbsp;        http</b>
+&nbsp;                // Disable CSRF protection, as we are using stateless JWT authentication
+<b class="fc">&nbsp;                .csrf(AbstractHttpConfigurer::disable)</b>
+&nbsp;                // Configure CORS to allow requests from the frontend
+<b class="fc">&nbsp;                .cors(cors -&gt; cors.configurationSource(corsConfigurationSource()))</b>
+&nbsp;                // Set session management to stateless
+<b class="fc">&nbsp;                .sessionManagement(session -&gt; session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))</b>
+&nbsp;                // Define authorization rules for endpoints
+<b class="fc">&nbsp;                .authorizeHttpRequests(authorize -&gt; authorize</b>
+&nbsp;                        // Allow unauthenticated access to public endpoints if any (e.g., actuator health)
+<b class="fc">&nbsp;                        .requestMatchers(&quot;/public/**&quot;, &quot;/actuator/health&quot;).permitAll()</b>
+&nbsp;                        // Require authentication for all other requests
+<b class="fc">&nbsp;                        .anyRequest().authenticated()</b>
+&nbsp;                )
+&nbsp;                // Configure the app as an OAuth2 Resource Server to validate JWTs
+<b class="fc">&nbsp;                .oauth2ResourceServer(oauth2 -&gt; oauth2.jwt(jwt -&gt; jwt.decoder(jwtDecoder()).jwtAuthenticationConverter(jwtAuthenticationConverter())))</b>
+&nbsp;                // Add security headers for embedding protection
+<b class="fc">&nbsp;                .headers(headers -&gt; headers</b>
+&nbsp;                    // Disables the default X-Frame-Options header which is DENY
+<b class="fc">&nbsp;                    .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)</b>
+&nbsp;                    // Sets the Content-Security-Policy header to allow embedding only from the same origin
+<b class="fc">&nbsp;                    .contentSecurityPolicy(csp -&gt; csp</b>
+<b class="fc">&nbsp;                        .policyDirectives(&quot;frame-ancestors &#39;self&#39; &quot; +</b>
+&nbsp;                                &quot;https://treated-paste-eos-memo.trycloudflare.com; &quot; +
+&nbsp;                                &quot;style-src &#39;self&#39; &#39;unsafe-inline&#39;; &quot; +
+&nbsp;                                &quot;default-src &#39;self&#39;&quot;)
+&nbsp;                    )
+&nbsp;                );
+&nbsp;
+<b class="fc">&nbsp;        return http.build();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Bean
+&nbsp;    public CorsConfigurationSource corsConfigurationSource() {
+<b class="fc">&nbsp;        CorsConfiguration configuration = new CorsConfiguration();</b>
+&nbsp;        // Specify allowed origins (e.g., your frontend application&#39;s URL)
+<b class="fc">&nbsp;        configuration.setAllowedOrigins(List.of(</b>
+&nbsp;                &quot;http://localhost:3000&quot;,
+&nbsp;                &quot;http://localhost:5173&quot;,
+&nbsp;                &quot;https://ioc-frontend-git-chore-configmetabase-a-8166e5-qb4745s-projects.vercel.app&quot;
+&nbsp;        ));
+<b class="fc">&nbsp;        configuration.setAllowedMethods(List.of(&quot;GET&quot;, &quot;POST&quot;, &quot;PUT&quot;, &quot;DELETE&quot;, &quot;OPTIONS&quot;));</b>
+<b class="fc">&nbsp;        configuration.setAllowedHeaders(List.of(&quot;Authorization&quot;, &quot;Content-Type&quot;, &quot;X-Requested-With&quot;, &quot;Accept&quot;, &quot;Origin&quot;));</b>
+<b class="fc">&nbsp;        configuration.setExposedHeaders(List.of(&quot;Retry-After&quot;, &quot;RateLimit-Limit&quot;, &quot;RateLimit-Remaining&quot;, &quot;RateLimit-Reset&quot;));</b>
+<b class="fc">&nbsp;        configuration.setAllowCredentials(true);</b>
+&nbsp;
+<b class="fc">&nbsp;        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();</b>
+<b class="fc">&nbsp;        source.registerCorsConfiguration(&quot;/**&quot;, configuration);</b>
+<b class="fc">&nbsp;        return source;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Bean
+&nbsp;    public JwtDecoder jwtDecoder() {
+&nbsp;        // Construct the JWK Set URI from the issuer URI
+<b class="fc">&nbsp;        String jwkSetUri = this.issuerUri + &quot;/.well-known/jwks.json&quot;;</b>
+&nbsp;
+&nbsp;        // Create a NimbusJwtDecoder that is configured to use the ES256 algorithm
+<b class="fc">&nbsp;        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri)</b>
+<b class="fc">&nbsp;                .jwsAlgorithm(SignatureAlgorithm.ES256)</b>
+<b class="fc">&nbsp;                .build();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Bean
+&nbsp;    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+<b class="fc">&nbsp;        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();</b>
+<b class="fc">&nbsp;        converter.setJwtGrantedAuthoritiesConverter(this.jwtGrantedAuthoritiesConverter());</b>
+<b class="fc">&nbsp;        return converter;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    private Converter&lt;Jwt, Collection&lt;GrantedAuthority&gt;&gt; jwtGrantedAuthoritiesConverter() {
+<b class="fc">&nbsp;        return jwt -&gt; {</b>
+<b class="nc">&nbsp;            List&lt;GrantedAuthority&gt; authorities = new ArrayList&lt;&gt;();</b>
+&nbsp;
+&nbsp;            // 1) Extract roles from realm_access.roles (Keycloak-style)
+<b class="nc">&nbsp;            Object realmAccess = jwt.getClaim(&quot;realm_access&quot;);</b>
+<b class="nc">&nbsp;            if (realmAccess instanceof Map) {</b>
+<b class="nc">&nbsp;                Object rolesObj = ((Map&lt;?, ?&gt;) realmAccess).get(&quot;roles&quot;);</b>
+<b class="nc">&nbsp;                if (rolesObj instanceof List) {</b>
+<b class="nc">&nbsp;                    List&lt;?&gt; roles = (List&lt;?&gt;) rolesObj;</b>
+<b class="nc">&nbsp;                    authorities.addAll(roles.stream()</b>
+<b class="nc">&nbsp;                            .map(Object::toString)</b>
+<b class="nc">&nbsp;                            .map(r -&gt; new SimpleGrantedAuthority(&quot;ROLE_&quot; + r))</b>
+<b class="nc">&nbsp;                            .collect(Collectors.toList()));</b>
+&nbsp;                }
+&nbsp;            }
+&nbsp;
+&nbsp;            // 2) Extract roles claim if present (simple list claim)
+<b class="nc">&nbsp;            List&lt;String&gt; directRoles = jwt.getClaimAsStringList(&quot;roles&quot;);</b>
+<b class="nc">&nbsp;            if (directRoles != null) {</b>
+<b class="nc">&nbsp;                authorities.addAll(directRoles.stream()</b>
+<b class="nc">&nbsp;                        .map(r -&gt; new SimpleGrantedAuthority(&quot;ROLE_&quot; + r))</b>
+<b class="nc">&nbsp;                        .collect(Collectors.toList()));</b>
+&nbsp;            }
+&nbsp;
+&nbsp;            // 3) Also include scope-based authorities (default converter) to support scopes
+<b class="nc">&nbsp;            JwtGrantedAuthoritiesConverter scopesConverter = new JwtGrantedAuthoritiesConverter();</b>
+<b class="nc">&nbsp;            Collection&lt;GrantedAuthority&gt; scopeAuthorities = scopesConverter.convert(jwt);</b>
+<b class="nc">&nbsp;            if (scopeAuthorities != null) authorities.addAll(scopeAuthorities);</b>
+&nbsp;
+<b class="nc">&nbsp;            return authorities;</b>
+&nbsp;        };
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2025-10-22 07:08</div>
+</div>
+</body>
+</html>

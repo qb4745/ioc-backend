@@ -3,21 +3,31 @@ package com.cambiaso.ioc.security;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -44,7 +54,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 // Configure the app as an OAuth2 Resource Server to validate JWTs
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder())))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder()).jwtAuthenticationConverter(jwtAuthenticationConverter())))
                 // Add security headers for embedding protection
                 .headers(headers -> headers
                     // Disables the default X-Frame-Options header which is DENY
@@ -65,14 +75,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         // Specify allowed origins (e.g., your frontend application's URL)
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000", 
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000",
                 "http://localhost:5173",
                 "https://ioc-frontend-git-chore-configmetabase-a-8166e5-qb4745s-projects.vercel.app"
         ));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
-        configuration.setExposedHeaders(Arrays.asList("Retry-After", "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+        configuration.setExposedHeaders(List.of("Retry-After", "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -89,5 +99,46 @@ public class SecurityConfig {
         return NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
                 .jwsAlgorithm(SignatureAlgorithm.ES256)
                 .build();
+    }
+
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(this.jwtGrantedAuthoritiesConverter());
+        return converter;
+    }
+
+    private Converter<Jwt, Collection<GrantedAuthority>> jwtGrantedAuthoritiesConverter() {
+        return jwt -> {
+            List<GrantedAuthority> authorities = new ArrayList<>();
+
+            // 1) Extract roles from realm_access.roles (Keycloak-style)
+            Object realmAccess = jwt.getClaim("realm_access");
+            if (realmAccess instanceof Map) {
+                Object rolesObj = ((Map<?, ?>) realmAccess).get("roles");
+                if (rolesObj instanceof List) {
+                    List<?> roles = (List<?>) rolesObj;
+                    authorities.addAll(roles.stream()
+                            .map(Object::toString)
+                            .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                            .collect(Collectors.toList()));
+                }
+            }
+
+            // 2) Extract roles claim if present (simple list claim)
+            List<String> directRoles = jwt.getClaimAsStringList("roles");
+            if (directRoles != null) {
+                authorities.addAll(directRoles.stream()
+                        .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                        .collect(Collectors.toList()));
+            }
+
+            // 3) Also include scope-based authorities (default converter) to support scopes
+            JwtGrantedAuthoritiesConverter scopesConverter = new JwtGrantedAuthoritiesConverter();
+            Collection<GrantedAuthority> scopeAuthorities = scopesConverter.convert(jwt);
+            if (scopeAuthorities != null) authorities.addAll(scopeAuthorities);
+
+            return authorities;
+        };
     }
 }

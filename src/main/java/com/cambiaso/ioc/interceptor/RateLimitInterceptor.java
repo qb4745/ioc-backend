@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
@@ -19,12 +20,21 @@ import org.springframework.web.servlet.HandlerInterceptor;
 @RequiredArgsConstructor
 public class RateLimitInterceptor implements HandlerInterceptor {
 
-    private final RateLimitingConfig rateLimitingConfig;
+    // make the config optional for test slices by using ObjectProvider
+    private final ObjectProvider<RateLimitingConfig> rateLimitingConfigProvider;
 
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) throws Exception {
         // Only apply rate limiting to ETL endpoints
         if (!request.getRequestURI().startsWith("/api/etl/")) {
+            return true;
+        }
+
+        // obtain the actual config bean if present
+        RateLimitingConfig rateLimitingConfig = rateLimitingConfigProvider.getIfAvailable();
+        if (rateLimitingConfig == null) {
+            // No rate limiting configured in this context (e.g. lightweight test slice) - allow through
+            log.debug("RateLimitingConfig bean not present; skipping rate limit checks");
             return true;
         }
 

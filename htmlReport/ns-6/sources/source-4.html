@@ -1,0 +1,157 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > UsuarioUpdateRequest</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">com.cambiaso.ioc.dto.request</a>
+</div>
+
+<h1>Coverage Summary for Class: UsuarioUpdateRequest (com.cambiaso.ioc.dto.request)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">UsuarioUpdateRequest</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/17)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/17)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.dto.request;
+&nbsp;
+&nbsp;import jakarta.validation.constraints.NotBlank;
+&nbsp;import jakarta.validation.constraints.Size;
+&nbsp;
+&nbsp;import java.time.LocalDate;
+&nbsp;
+<b class="nc">&nbsp;public class UsuarioUpdateRequest {</b>
+&nbsp;
+&nbsp;    @NotBlank
+&nbsp;    private String primerNombre;
+&nbsp;
+&nbsp;    private String segundoNombre;
+&nbsp;
+&nbsp;    @NotBlank
+&nbsp;    private String primerApellido;
+&nbsp;
+&nbsp;    private String segundoApellido;
+&nbsp;
+&nbsp;    private Integer plantaId; // nullable to unset
+&nbsp;
+&nbsp;    @Size(max = 50)
+&nbsp;    private String centroCosto;
+&nbsp;
+&nbsp;    private LocalDate fechaContrato;
+&nbsp;
+&nbsp;    private Boolean isActive;
+&nbsp;
+<b class="nc">&nbsp;    public String getPrimerNombre() { return primerNombre; }</b>
+<b class="nc">&nbsp;    public void setPrimerNombre(String primerNombre) { this.primerNombre = primerNombre; }</b>
+&nbsp;
+<b class="nc">&nbsp;    public String getSegundoNombre() { return segundoNombre; }</b>
+<b class="nc">&nbsp;    public void setSegundoNombre(String segundoNombre) { this.segundoNombre = segundoNombre; }</b>
+&nbsp;
+<b class="nc">&nbsp;    public String getPrimerApellido() { return primerApellido; }</b>
+<b class="nc">&nbsp;    public void setPrimerApellido(String primerApellido) { this.primerApellido = primerApellido; }</b>
+&nbsp;
+<b class="nc">&nbsp;    public String getSegundoApellido() { return segundoApellido; }</b>
+<b class="nc">&nbsp;    public void setSegundoApellido(String segundoApellido) { this.segundoApellido = segundoApellido; }</b>
+&nbsp;
+<b class="nc">&nbsp;    public Integer getPlantaId() { return plantaId; }</b>
+<b class="nc">&nbsp;    public void setPlantaId(Integer plantaId) { this.plantaId = plantaId; }</b>
+&nbsp;
+<b class="nc">&nbsp;    public String getCentroCosto() { return centroCosto; }</b>
+<b class="nc">&nbsp;    public void setCentroCosto(String centroCosto) { this.centroCosto = centroCosto; }</b>
+&nbsp;
+<b class="nc">&nbsp;    public LocalDate getFechaContrato() { return fechaContrato; }</b>
+<b class="nc">&nbsp;    public void setFechaContrato(LocalDate fechaContrato) { this.fechaContrato = fechaContrato; }</b>
+&nbsp;
+<b class="nc">&nbsp;    public Boolean getIsActive() { return isActive; }</b>
+<b class="nc">&nbsp;    public void setIsActive(Boolean isActive) { this.isActive = isActive; }</b>
+&nbsp;}
+&nbsp;
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2025-10-22 07:08</div>
+</div>
+</body>
+</html>

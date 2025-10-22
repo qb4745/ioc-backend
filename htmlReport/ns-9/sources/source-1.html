@@ -1,0 +1,168 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > EtlHealthIndicator</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">com.cambiaso.ioc.health</a>
+</div>
+
+<h1>Coverage Summary for Class: EtlHealthIndicator (com.cambiaso.ioc.health)</h1>
+
+<table class="coverageStats">
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Class, %
+</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">EtlHealthIndicator</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    100%
+  </span>
+  <span class="absValue">
+    (2/2)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    50%
+  </span>
+  <span class="absValue">
+    (3/6)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    94.4%
+  </span>
+  <span class="absValue">
+    (17/18)
+  </span>
+</td>
+</tr>
+
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.health;
+&nbsp;
+&nbsp;import org.springframework.boot.actuate.health.Health;
+&nbsp;import org.springframework.boot.actuate.health.HealthIndicator;
+&nbsp;import org.springframework.jdbc.core.JdbcTemplate;
+&nbsp;import org.springframework.stereotype.Component;
+&nbsp;
+&nbsp;import java.util.Map;
+&nbsp;
+&nbsp;/**
+&nbsp; * HealthIndicator para exponer estado de integridad ETL
+&nbsp; */
+&nbsp;@Component
+&nbsp;public class EtlHealthIndicator implements HealthIndicator {
+&nbsp;
+&nbsp;    private final JdbcTemplate jdbcTemplate;
+&nbsp;
+&nbsp;    private static final String UNIQUE_SQL = &quot;SELECT 1 FROM pg_indexes WHERE tablename=&#39;fact_production&#39; AND indexname=&#39;uq_fact_prod_natural&#39;&quot;;
+&nbsp;    private static final String DUP_COUNT_SQL = &quot;SELECT COUNT(*) FROM (SELECT 1 FROM fact_production GROUP BY fecha_contabilizacion, maquina_fk, COALESCE(maquinista_fk,0), numero_log HAVING COUNT(*)&gt;1) t&quot;;
+&nbsp;    private static final String MAX_ID_SQL = &quot;SELECT COALESCE(MAX(id),0) FROM fact_production&quot;;
+&nbsp;    private static final String SEQ_SQL = &quot;SELECT last_value FROM fact_production_id_seq&quot;;
+&nbsp;    private static final String ROWCOUNT_SQL = &quot;SELECT reltuples::bigint FROM pg_class WHERE relname=&#39;fact_production&#39;&quot;;
+&nbsp;
+<b class="fc">&nbsp;    public EtlHealthIndicator(JdbcTemplate jdbcTemplate) {</b>
+<b class="fc">&nbsp;        this.jdbcTemplate = jdbcTemplate;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Override
+&nbsp;    public Health health() {
+&nbsp;        try {
+<b class="fc">&nbsp;            boolean uniquePresent = !jdbcTemplate.queryForList(UNIQUE_SQL).isEmpty();</b>
+<b class="fc">&nbsp;            int duplicateGroups = jdbcTemplate.queryForObject(DUP_COUNT_SQL, Integer.class);</b>
+<b class="fc">&nbsp;            long maxId = jdbcTemplate.queryForObject(MAX_ID_SQL, Long.class);</b>
+<b class="fc">&nbsp;            long lastVal = jdbcTemplate.queryForObject(SEQ_SQL, Long.class);</b>
+<b class="pc">&nbsp;            boolean sequenceBehind = maxId &gt;= lastVal;</b>
+<b class="fc">&nbsp;            long approxRows = jdbcTemplate.queryForObject(ROWCOUNT_SQL, Long.class);</b>
+&nbsp;
+<b class="pc">&nbsp;            Health.Builder builder = (uniquePresent &amp;&amp; duplicateGroups == 0) ? Health.up() : Health.down();</b>
+<b class="fc">&nbsp;            builder.withDetails(Map.of(</b>
+<b class="fc">&nbsp;                    &quot;uniqueIndexPresent&quot;, uniquePresent,</b>
+<b class="fc">&nbsp;                    &quot;duplicateGroups&quot;, duplicateGroups,</b>
+<b class="fc">&nbsp;                    &quot;sequenceBehindSuspect&quot;, sequenceBehind,</b>
+<b class="fc">&nbsp;                    &quot;approxRowCount&quot;, approxRows,</b>
+<b class="fc">&nbsp;                    &quot;maxId&quot;, maxId,</b>
+<b class="fc">&nbsp;                    &quot;sequenceLastValue&quot;, lastVal</b>
+&nbsp;            ));
+<b class="fc">&nbsp;            return builder.build();</b>
+&nbsp;        } catch (Exception e) {
+<b class="nc">&nbsp;            return Health.down(e).build();</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2025-10-22 07:08</div>
+</div>
+</body>
+</html>

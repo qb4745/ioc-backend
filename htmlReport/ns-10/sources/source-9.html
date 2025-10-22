@@ -1,0 +1,262 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > NotificationService</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">com.cambiaso.ioc.service</a>
+</div>
+
+<h1>Coverage Summary for Class: NotificationService (com.cambiaso.ioc.service)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">NotificationService</td>
+<td class="coverageStat">
+  <span class="percent">
+    14.3%
+  </span>
+  <span class="absValue">
+    (1/7)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/22)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    3.3%
+  </span>
+  <span class="absValue">
+    (1/30)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">NotificationService$NotificationException</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/1)
+  </span>
+</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    12.5%
+  </span>
+  <span class="absValue">
+    (1/8)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/22)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    3.2%
+  </span>
+  <span class="absValue">
+    (1/31)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.service;
+&nbsp;
+&nbsp;import com.cambiaso.ioc.dto.NotificationPayload;
+&nbsp;import lombok.RequiredArgsConstructor;
+&nbsp;import lombok.extern.slf4j.Slf4j;
+&nbsp;import org.springframework.messaging.simp.SimpMessagingTemplate;
+&nbsp;import org.springframework.stereotype.Service;
+&nbsp;
+&nbsp;import java.util.Set;
+&nbsp;import java.util.UUID;
+&nbsp;import java.util.concurrent.ConcurrentHashMap;
+&nbsp;
+<b class="fc">&nbsp;@Slf4j</b>
+&nbsp;@Service
+&nbsp;@RequiredArgsConstructor
+&nbsp;public class NotificationService {
+&nbsp;
+&nbsp;    private final SimpMessagingTemplate messagingTemplate;
+&nbsp;
+&nbsp;    // Track active user sessions for monitoring
+&nbsp;    private final Set&lt;String&gt; activeUsers = ConcurrentHashMap.newKeySet();
+&nbsp;
+&nbsp;    /**
+&nbsp;     * Sends a notification to a specific user about an ETL job status change
+&nbsp;     */
+&nbsp;    public void notifyUser(String userId, UUID jobId, NotificationPayload payload) {
+<b class="nc">&nbsp;        if (!isValidInput(userId, jobId, payload)) {</b>
+<b class="nc">&nbsp;            log.warn(&quot;Invalid notification parameters: userId={}, jobId={}, payload={}&quot;, userId, jobId, payload);</b>
+&nbsp;            return;
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        String destination = String.format(&quot;/topic/etl-jobs/%s&quot;, jobId);</b>
+&nbsp;        try {
+<b class="nc">&nbsp;            messagingTemplate.convertAndSendToUser(userId, destination, payload);</b>
+<b class="nc">&nbsp;            activeUsers.add(userId);</b>
+<b class="nc">&nbsp;            log.debug(&quot;Notification sent to user {} for job {}: {}&quot;, userId, jobId, payload.getStatus());</b>
+&nbsp;        } catch (Exception e) {
+<b class="nc">&nbsp;            log.error(&quot;Failed to send notification to user {} for job {}: {}&quot;, userId, jobId, e.getMessage(), e);</b>
+<b class="nc">&nbsp;            throw new NotificationException(&quot;Failed to send notification&quot;, e);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    /**
+&nbsp;     * Broadcasts a notification to all users subscribed to a specific job
+&nbsp;     */
+&nbsp;    public void broadcastJobUpdate(UUID jobId, NotificationPayload payload) {
+<b class="nc">&nbsp;        if (jobId == null || payload == null) {</b>
+<b class="nc">&nbsp;            log.warn(&quot;Invalid broadcast parameters: jobId={}, payload={}&quot;, jobId, payload);</b>
+&nbsp;            return;
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        String destination = String.format(&quot;/topic/etl-jobs/%s&quot;, jobId);</b>
+&nbsp;        try {
+<b class="nc">&nbsp;            messagingTemplate.convertAndSend(destination, payload);</b>
+<b class="nc">&nbsp;            log.info(&quot;Broadcast sent for job {}: {}&quot;, jobId, payload.getStatus());</b>
+&nbsp;        } catch (Exception e) {
+<b class="nc">&nbsp;            log.error(&quot;Failed to broadcast for job {}: {}&quot;, jobId, e.getMessage(), e);</b>
+<b class="nc">&nbsp;            throw new NotificationException(&quot;Failed to broadcast notification&quot;, e);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    /**
+&nbsp;     * Sends a system-wide notification to all connected users
+&nbsp;     */
+&nbsp;    public void broadcastSystemMessage(String message) {
+<b class="nc">&nbsp;        if (message == null || message.trim().isEmpty()) {</b>
+<b class="nc">&nbsp;            log.warn(&quot;Cannot broadcast empty system message&quot;);</b>
+&nbsp;            return;
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        NotificationPayload payload = new NotificationPayload(&quot;SYSTEM&quot;, message);</b>
+&nbsp;        try {
+<b class="nc">&nbsp;            messagingTemplate.convertAndSend(&quot;/topic/system&quot;, payload);</b>
+<b class="nc">&nbsp;            log.info(&quot;System message broadcasted: {}&quot;, message);</b>
+&nbsp;        } catch (Exception e) {
+<b class="nc">&nbsp;            log.error(&quot;Failed to broadcast system message: {}&quot;, e.getMessage(), e);</b>
+<b class="nc">&nbsp;            throw new NotificationException(&quot;Failed to broadcast system message&quot;, e);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    /**
+&nbsp;     * Gets the count of active users who have received notifications
+&nbsp;     */
+&nbsp;    public int getActiveUserCount() {
+<b class="nc">&nbsp;        return activeUsers.size();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    /**
+&nbsp;     * Removes a user from the active users set (for cleanup)
+&nbsp;     */
+&nbsp;    public void removeActiveUser(String userId) {
+<b class="nc">&nbsp;        if (userId != null) {</b>
+<b class="nc">&nbsp;            activeUsers.remove(userId);</b>
+<b class="nc">&nbsp;            log.debug(&quot;User {} removed from active users&quot;, userId);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    private boolean isValidInput(String userId, UUID jobId, NotificationPayload payload) {
+<b class="nc">&nbsp;        return userId != null &amp;&amp; !userId.trim().isEmpty()</b>
+&nbsp;               &amp;&amp; jobId != null
+&nbsp;               &amp;&amp; payload != null
+<b class="nc">&nbsp;               &amp;&amp; payload.getStatus() != null</b>
+<b class="nc">&nbsp;               &amp;&amp; !payload.getStatus().trim().isEmpty();</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // Custom exception for notification failures
+&nbsp;    public static class NotificationException extends RuntimeException {
+&nbsp;        public NotificationException(String message, Throwable cause) {
+<b class="nc">&nbsp;            super(message, cause);</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2025-10-22 07:08</div>
+</div>
+</body>
+</html>

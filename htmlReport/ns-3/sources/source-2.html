@@ -1,0 +1,242 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > EtlController</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">com.cambiaso.ioc.controller</a>
+</div>
+
+<h1>Coverage Summary for Class: EtlController (com.cambiaso.ioc.controller)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">EtlController</td>
+<td class="coverageStat">
+  <span class="percent">
+    25%
+  </span>
+  <span class="absValue">
+    (1/4)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/16)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    3.2%
+  </span>
+  <span class="absValue">
+    (1/31)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">EtlController$$SpringCGLIB$$0</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    25%
+  </span>
+  <span class="absValue">
+    (1/4)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/16)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    3.2%
+  </span>
+  <span class="absValue">
+    (1/31)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.controller;
+&nbsp;
+&nbsp;import com.cambiaso.ioc.dto.EtlJobStatusDto;
+&nbsp;import com.cambiaso.ioc.exception.JobConflictException;
+&nbsp;import com.cambiaso.ioc.persistence.entity.EtlJob;
+&nbsp;import com.cambiaso.ioc.service.EtlJobService;
+&nbsp;import com.cambiaso.ioc.service.EtlProcessingService;
+&nbsp;import lombok.RequiredArgsConstructor;
+&nbsp;import lombok.extern.slf4j.Slf4j;
+&nbsp;import org.springframework.http.ResponseEntity;
+&nbsp;import org.springframework.security.access.prepost.PreAuthorize;
+&nbsp;import org.springframework.security.core.annotation.AuthenticationPrincipal;
+&nbsp;import org.springframework.security.oauth2.jwt.Jwt;
+&nbsp;import org.springframework.web.bind.annotation.*;
+&nbsp;import org.springframework.web.multipart.MultipartFile;
+&nbsp;
+&nbsp;import jakarta.validation.constraints.NotNull;
+&nbsp;import java.util.Map;
+&nbsp;import java.util.Optional;
+&nbsp;import java.util.UUID;
+&nbsp;import java.util.Objects;
+&nbsp;
+<b class="fc">&nbsp;@Slf4j</b>
+&nbsp;@RestController
+&nbsp;@RequestMapping(&quot;/api/etl&quot;)
+&nbsp;@RequiredArgsConstructor
+&nbsp;public class EtlController {
+&nbsp;
+&nbsp;    private final EtlProcessingService etlProcessingService;
+&nbsp;    private final EtlJobService etlJobService;
+&nbsp;
+&nbsp;    // Maximum file size: 50MB
+&nbsp;    private static final long MAX_FILE_SIZE = 50 * 1024 * 1024;
+&nbsp;
+&nbsp;    @PostMapping(&quot;/start-process&quot;)
+&nbsp;    @PreAuthorize(&quot;isAuthenticated()&quot;)
+&nbsp;    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; startEtlProcess(
+&nbsp;            @RequestParam(&quot;file&quot;) @NotNull MultipartFile file,
+&nbsp;            @AuthenticationPrincipal Jwt jwt) {
+&nbsp;
+&nbsp;        // Enhanced file validation (includes null/empty checks)
+<b class="nc">&nbsp;        validateFile(file);</b>
+&nbsp;
+&nbsp;        // Ensure non-null filename for downstream usage
+<b class="nc">&nbsp;        final String originalFilename = Objects.requireNonNull(file.getOriginalFilename(), &quot;File name cannot be null&quot;);</b>
+&nbsp;
+<b class="nc">&nbsp;        log.info(&quot;Starting ETL process for file: {} by user: {}&quot;,</b>
+<b class="nc">&nbsp;                originalFilename, jwt.getSubject());</b>
+&nbsp;
+<b class="nc">&nbsp;        String userId = jwt.getSubject();</b>
+<b class="nc">&nbsp;        String fileHash = etlProcessingService.calculateFileHash(file);</b>
+&nbsp;
+&nbsp;        // Idempotency check
+<b class="nc">&nbsp;        Optional&lt;EtlJob&gt; existingJob = etlJobService.findByFileHash(fileHash);</b>
+<b class="nc">&nbsp;        if (existingJob.isPresent()) {</b>
+<b class="nc">&nbsp;            throw new JobConflictException(&quot;This file has already been processed. Job ID: &quot; + existingJob.get().getJobId());</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        EtlJob newJob = etlJobService.createJob(originalFilename, fileHash, userId);</b>
+&nbsp;
+&nbsp;        // Start async processing
+<b class="nc">&nbsp;        etlProcessingService.processFile(file, userId, newJob.getJobId());</b>
+&nbsp;
+<b class="nc">&nbsp;        log.info(&quot;ETL job created with ID: {} for file: {}&quot;, newJob.getJobId(), originalFilename);</b>
+<b class="nc">&nbsp;        return ResponseEntity.accepted().body(Map.of(</b>
+<b class="nc">&nbsp;                &quot;jobId&quot;, newJob.getJobId(),</b>
+&nbsp;                &quot;fileName&quot;, originalFilename,
+&nbsp;                &quot;status&quot;, &quot;INICIADO&quot;
+&nbsp;        ));
+&nbsp;    }
+&nbsp;
+&nbsp;    @GetMapping(&quot;/jobs/{jobId}/status&quot;)
+&nbsp;    @PreAuthorize(&quot;isAuthenticated()&quot;)
+&nbsp;    public ResponseEntity&lt;EtlJobStatusDto&gt; getJobStatus(
+&nbsp;            @PathVariable UUID jobId,
+&nbsp;            @AuthenticationPrincipal Jwt jwt) {
+&nbsp;
+<b class="nc">&nbsp;        log.debug(&quot;Fetching job status for ID: {} by user: {}&quot;, jobId, jwt.getSubject());</b>
+&nbsp;
+<b class="nc">&nbsp;        return etlJobService.findById(jobId)</b>
+<b class="nc">&nbsp;                .map(EtlJobStatusDto::fromEntity)</b>
+<b class="nc">&nbsp;                .map(ResponseEntity::ok)</b>
+<b class="nc">&nbsp;                .orElse(ResponseEntity.notFound().build());</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    private void validateFile(MultipartFile file) {
+<b class="nc">&nbsp;        if (file == null || file.isEmpty()) {</b>
+<b class="nc">&nbsp;            throw new IllegalArgumentException(&quot;File cannot be empty&quot;);</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        if (file.getSize() &gt; MAX_FILE_SIZE) {</b>
+<b class="nc">&nbsp;            throw new IllegalArgumentException(&quot;File size exceeds maximum allowed limit of 50MB&quot;);</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        String filename = file.getOriginalFilename();</b>
+<b class="nc">&nbsp;        if (filename == null || !filename.toLowerCase().endsWith(&quot;.txt&quot;)) {</b>
+<b class="nc">&nbsp;            throw new IllegalArgumentException(&quot;Only TXT files are allowed&quot;);</b>
+&nbsp;        }
+&nbsp;
+&nbsp;        // For .txt files, &quot;text/plain&quot; is the most common and sufficient content type to check.
+<b class="nc">&nbsp;        String contentType = file.getContentType();</b>
+<b class="nc">&nbsp;        if (contentType != null &amp;&amp; !contentType.equals(&quot;text/plain&quot;)) {</b>
+<b class="nc">&nbsp;            log.warn(&quot;File &#39;{}&#39; has an unusual content type: {}. Allowing it, but expected &#39;text/plain&#39;.&quot;, filename, contentType);</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        log.debug(&quot;File validation passed for: {} (size: {} bytes)&quot;, filename, file.getSize());</b>
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2025-10-22 07:08</div>
+</div>
+</body>
+</html>
