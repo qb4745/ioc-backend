@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > DimMaquinista</title>
+  <title>Coverage Report > Role</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,7 +22,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.persistence.entity</a>
 </div>
 
-<h1>Coverage Summary for Class: DimMaquinista (com.cambiaso.ioc.persistence.entity)</h1>
+<h1>Coverage Summary for Class: Role (com.cambiaso.ioc.persistence.entity)</h1>
 
 <table class="coverageStats">
 
@@ -30,10 +30,10 @@ Current scope:     <a href="../../index.html">all classes</a>
   <th class="name">Class</th>
 </tr>
   <tr>
-    <td class="name">DimMaquinista$HibernateInstantiator</td>
+    <td class="name">Role$HibernateInstantiator</td>
   </tr>
   <tr>
-    <td class="name">DimMaquinista$HibernateProxy</td>
+    <td class="name">Role$HibernateProxy</td>
   </tr>
 <tr>
   <td class="name"><strong>Total</strong></td>
@@ -49,24 +49,24 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;
 &nbsp;import jakarta.persistence.*;
 &nbsp;import lombok.Data;
-&nbsp;import java.time.OffsetDateTime;
 &nbsp;import org.hibernate.annotations.CreationTimestamp;
 &nbsp;import org.hibernate.annotations.UpdateTimestamp;
 &nbsp;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;
 &nbsp;@Data
 &nbsp;@Entity
-&nbsp;@Table(name = &quot;dim_maquinista&quot;)
-&nbsp;public class DimMaquinista {
+&nbsp;@Table(name = &quot;roles&quot;)
+&nbsp;public class Role {
 &nbsp;
 &nbsp;    @Id
 &nbsp;    @GeneratedValue(strategy = GenerationType.IDENTITY)
-&nbsp;    private Long id;
+&nbsp;    private Integer id;
 &nbsp;
-&nbsp;    @Column(name = &quot;codigo_maquinista&quot;, nullable = false, unique = true)
-&nbsp;    private Long codigoMaquinista;
+&nbsp;    @Column(nullable = false, unique = true, length = 100)
+&nbsp;    private String name;
 &nbsp;
-&nbsp;    @Column(name = &quot;nombre_completo&quot;)
-&nbsp;    private String nombreCompleto;
+&nbsp;    private String description;
 &nbsp;
 &nbsp;    @CreationTimestamp
 &nbsp;    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
@@ -76,6 +76,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;    @Column(name = &quot;updated_at&quot;, nullable = false)
 &nbsp;    private OffsetDateTime updatedAt;
 &nbsp;}
+&nbsp;
 </code>
 </pre>
 </div>
@@ -99,7 +100,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

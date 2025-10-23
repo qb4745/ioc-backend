@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > Role</title>
+  <title>Coverage Report > RolePermission</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,7 +22,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.persistence.entity</a>
 </div>
 
-<h1>Coverage Summary for Class: Role (com.cambiaso.ioc.persistence.entity)</h1>
+<h1>Coverage Summary for Class: RolePermission (com.cambiaso.ioc.persistence.entity)</h1>
 
 <table class="coverageStats">
 
@@ -30,10 +30,10 @@ Current scope:     <a href="../../index.html">all classes</a>
   <th class="name">Class</th>
 </tr>
   <tr>
-    <td class="name">Role$HibernateInstantiator</td>
+    <td class="name">RolePermission$HibernateInstantiator</td>
   </tr>
   <tr>
-    <td class="name">Role$HibernateProxy</td>
+    <td class="name">RolePermission$HibernateProxy</td>
   </tr>
 <tr>
   <td class="name"><strong>Total</strong></td>
@@ -50,31 +50,30 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;import jakarta.persistence.*;
 &nbsp;import lombok.Data;
 &nbsp;import org.hibernate.annotations.CreationTimestamp;
-&nbsp;import org.hibernate.annotations.UpdateTimestamp;
 &nbsp;
 &nbsp;import java.time.OffsetDateTime;
 &nbsp;
 &nbsp;@Data
 &nbsp;@Entity
-&nbsp;@Table(name = &quot;roles&quot;)
-&nbsp;public class Role {
+&nbsp;@Table(name = &quot;role_permissions&quot;)
+&nbsp;public class RolePermission {
 &nbsp;
-&nbsp;    @Id
-&nbsp;    @GeneratedValue(strategy = GenerationType.IDENTITY)
-&nbsp;    private Integer id;
+&nbsp;    @EmbeddedId
+&nbsp;    private RolePermissionKey id;
 &nbsp;
-&nbsp;    @Column(nullable = false, unique = true, length = 100)
-&nbsp;    private String name;
+&nbsp;    @ManyToOne(fetch = FetchType.LAZY)
+&nbsp;    @MapsId(&quot;roleId&quot;)
+&nbsp;    @JoinColumn(name = &quot;role_id&quot;)
+&nbsp;    private Role role;
 &nbsp;
-&nbsp;    private String description;
+&nbsp;    @ManyToOne(fetch = FetchType.LAZY)
+&nbsp;    @MapsId(&quot;permissionId&quot;)
+&nbsp;    @JoinColumn(name = &quot;permission_id&quot;)
+&nbsp;    private Permission permission;
 &nbsp;
 &nbsp;    @CreationTimestamp
 &nbsp;    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
 &nbsp;    private OffsetDateTime createdAt;
-&nbsp;
-&nbsp;    @UpdateTimestamp
-&nbsp;    @Column(name = &quot;updated_at&quot;, nullable = false)
-&nbsp;    private OffsetDateTime updatedAt;
 &nbsp;}
 &nbsp;
 </code>
@@ -100,7 +99,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

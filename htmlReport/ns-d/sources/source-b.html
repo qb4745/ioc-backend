@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > RolePermission</title>
+  <title>Coverage Report > DimMaquinista</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,7 +22,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.persistence.entity</a>
 </div>
 
-<h1>Coverage Summary for Class: RolePermission (com.cambiaso.ioc.persistence.entity)</h1>
+<h1>Coverage Summary for Class: DimMaquinista (com.cambiaso.ioc.persistence.entity)</h1>
 
 <table class="coverageStats">
 
@@ -30,10 +30,10 @@ Current scope:     <a href="../../index.html">all classes</a>
   <th class="name">Class</th>
 </tr>
   <tr>
-    <td class="name">RolePermission$HibernateInstantiator</td>
+    <td class="name">DimMaquinista$HibernateInstantiator</td>
   </tr>
   <tr>
-    <td class="name">RolePermission$HibernateProxy</td>
+    <td class="name">DimMaquinista$HibernateProxy</td>
   </tr>
 <tr>
   <td class="name"><strong>Total</strong></td>
@@ -49,33 +49,33 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;
 &nbsp;import jakarta.persistence.*;
 &nbsp;import lombok.Data;
-&nbsp;import org.hibernate.annotations.CreationTimestamp;
-&nbsp;
 &nbsp;import java.time.OffsetDateTime;
+&nbsp;import org.hibernate.annotations.CreationTimestamp;
+&nbsp;import org.hibernate.annotations.UpdateTimestamp;
 &nbsp;
 &nbsp;@Data
 &nbsp;@Entity
-&nbsp;@Table(name = &quot;role_permissions&quot;)
-&nbsp;public class RolePermission {
+&nbsp;@Table(name = &quot;dim_maquinista&quot;)
+&nbsp;public class DimMaquinista {
 &nbsp;
-&nbsp;    @EmbeddedId
-&nbsp;    private RolePermissionKey id;
+&nbsp;    @Id
+&nbsp;    @GeneratedValue(strategy = GenerationType.IDENTITY)
+&nbsp;    private Long id;
 &nbsp;
-&nbsp;    @ManyToOne(fetch = FetchType.LAZY)
-&nbsp;    @MapsId(&quot;roleId&quot;)
-&nbsp;    @JoinColumn(name = &quot;role_id&quot;)
-&nbsp;    private Role role;
+&nbsp;    @Column(name = &quot;codigo_maquinista&quot;, nullable = false, unique = true)
+&nbsp;    private Long codigoMaquinista;
 &nbsp;
-&nbsp;    @ManyToOne(fetch = FetchType.LAZY)
-&nbsp;    @MapsId(&quot;permissionId&quot;)
-&nbsp;    @JoinColumn(name = &quot;permission_id&quot;)
-&nbsp;    private Permission permission;
+&nbsp;    @Column(name = &quot;nombre_completo&quot;)
+&nbsp;    private String nombreCompleto;
 &nbsp;
 &nbsp;    @CreationTimestamp
 &nbsp;    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
 &nbsp;    private OffsetDateTime createdAt;
-&nbsp;}
 &nbsp;
+&nbsp;    @UpdateTimestamp
+&nbsp;    @Column(name = &quot;updated_at&quot;, nullable = false)
+&nbsp;    private OffsetDateTime updatedAt;
+&nbsp;}
 </code>
 </pre>
 </div>
@@ -99,7 +99,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

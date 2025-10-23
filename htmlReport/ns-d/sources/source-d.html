@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > Planta</title>
+  <title>Coverage Report > QuarantinedRecord</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,7 +22,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.persistence.entity</a>
 </div>
 
-<h1>Coverage Summary for Class: Planta (com.cambiaso.ioc.persistence.entity)</h1>
+<h1>Coverage Summary for Class: QuarantinedRecord (com.cambiaso.ioc.persistence.entity)</h1>
 
 <table class="coverageStats">
 
@@ -30,10 +30,10 @@ Current scope:     <a href="../../index.html">all classes</a>
   <th class="name">Class</th>
 </tr>
   <tr>
-    <td class="name">Planta$HibernateInstantiator</td>
+    <td class="name">QuarantinedRecord$HibernateInstantiator</td>
   </tr>
   <tr>
-    <td class="name">Planta$HibernateProxy</td>
+    <td class="name">QuarantinedRecord$HibernateProxy</td>
   </tr>
 <tr>
   <td class="name"><strong>Total</strong></td>
@@ -49,40 +49,38 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;
 &nbsp;import jakarta.persistence.*;
 &nbsp;import lombok.Data;
-&nbsp;import org.hibernate.annotations.CreationTimestamp;
-&nbsp;import org.hibernate.annotations.UpdateTimestamp;
-&nbsp;
 &nbsp;import java.time.OffsetDateTime;
+&nbsp;import org.hibernate.annotations.CreationTimestamp;
 &nbsp;
 &nbsp;@Data
 &nbsp;@Entity
-&nbsp;@Table(name = &quot;plantas&quot;, indexes = {
-&nbsp;        @Index(name = &quot;idx_plantas_code&quot;, columnList = &quot;code&quot;, unique = true)
-&nbsp;})
-&nbsp;public class Planta {
+&nbsp;@Table(name = &quot;quarantined_records&quot;)
+&nbsp;public class QuarantinedRecord {
 &nbsp;
 &nbsp;    @Id
 &nbsp;    @GeneratedValue(strategy = GenerationType.IDENTITY)
-&nbsp;    private Integer id;
+&nbsp;    private Long id;
 &nbsp;
-&nbsp;    @Column(nullable = false, length = 50, unique = true)
-&nbsp;    private String code;
+&nbsp;    @ManyToOne(fetch = FetchType.LAZY)
+&nbsp;    @JoinColumn(name = &quot;job_id&quot;, nullable = false)
+&nbsp;    private EtlJob etlJob;
 &nbsp;
-&nbsp;    @Column(nullable = false, length = 120)
-&nbsp;    private String name;
+&nbsp;    @Column(name = &quot;file_name&quot;, nullable = false)
+&nbsp;    private String fileName;
 &nbsp;
-&nbsp;    @Column(columnDefinition = &quot;text&quot;)
-&nbsp;    private String address;
+&nbsp;    @Column(name = &quot;line_number&quot;)
+&nbsp;    private Integer lineNumber;
+&nbsp;
+&nbsp;    @Column(name = &quot;raw_line&quot;, nullable = false)
+&nbsp;    private String rawLine;
+&nbsp;
+&nbsp;    @Column(name = &quot;error_details&quot;, nullable = false)
+&nbsp;    private String errorDetails;
 &nbsp;
 &nbsp;    @CreationTimestamp
 &nbsp;    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
 &nbsp;    private OffsetDateTime createdAt;
-&nbsp;
-&nbsp;    @UpdateTimestamp
-&nbsp;    @Column(name = &quot;updated_at&quot;, nullable = false)
-&nbsp;    private OffsetDateTime updatedAt;
 &nbsp;}
-&nbsp;
 </code>
 </pre>
 </div>
@@ -106,7 +104,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

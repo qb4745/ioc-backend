@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > DimMaquinaRepository</title>
+  <title>Coverage Report > AppUserRepository</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,14 +22,14 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.persistence.repository</a>
 </div>
 
-<h1>Coverage Summary for Class: DimMaquinaRepository (com.cambiaso.ioc.persistence.repository)</h1>
+<h1>Coverage Summary for Class: AppUserRepository (com.cambiaso.ioc.persistence.repository)</h1>
 
 <table class="coverageStats">
 <tr>
   <th class="name">Class</th>
 </tr>
 <tr>
-  <td class="name">DimMaquinaRepository</td>
+  <td class="name">AppUserRepository</td>
 </tr>
 
 </table>
@@ -41,13 +41,17 @@ Current scope:     <a href="../../index.html">all classes</a>
 <pre>
 <code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.persistence.repository;
 &nbsp;
-&nbsp;import com.cambiaso.ioc.persistence.entity.DimMaquina;
+&nbsp;import com.cambiaso.ioc.persistence.entity.AppUser;
 &nbsp;import org.springframework.data.jpa.repository.JpaRepository;
 &nbsp;
 &nbsp;import java.util.Optional;
+&nbsp;import java.util.UUID;
 &nbsp;
-&nbsp;public interface DimMaquinaRepository extends JpaRepository&lt;DimMaquina, Long&gt; {
-&nbsp;    Optional&lt;DimMaquina&gt; findByCodigoMaquina(String codigoMaquina);
+&nbsp;public interface AppUserRepository extends JpaRepository&lt;AppUser, Long&gt; {
+&nbsp;    Optional&lt;AppUser&gt; findByEmailIgnoreCase(String email);
+&nbsp;    boolean existsByEmailIgnoreCase(String email);
+&nbsp;    Optional&lt;AppUser&gt; findBySupabaseUserId(UUID supabaseUserId);
+&nbsp;    boolean existsBySupabaseUserId(UUID supabaseUserId);
 &nbsp;}
 </code>
 </pre>
@@ -72,7 +76,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

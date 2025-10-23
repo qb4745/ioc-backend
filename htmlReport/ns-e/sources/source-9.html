@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > UserRoleRepository</title>
+  <title>Coverage Report > RolePermissionRepository</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,14 +22,14 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.persistence.repository</a>
 </div>
 
-<h1>Coverage Summary for Class: UserRoleRepository (com.cambiaso.ioc.persistence.repository)</h1>
+<h1>Coverage Summary for Class: RolePermissionRepository (com.cambiaso.ioc.persistence.repository)</h1>
 
 <table class="coverageStats">
 <tr>
   <th class="name">Class</th>
 </tr>
 <tr>
-  <td class="name">UserRoleRepository</td>
+  <td class="name">RolePermissionRepository</td>
 </tr>
 
 </table>
@@ -41,30 +41,21 @@ Current scope:     <a href="../../index.html">all classes</a>
 <pre>
 <code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.persistence.repository;
 &nbsp;
-&nbsp;import com.cambiaso.ioc.persistence.entity.UserRole;
-&nbsp;import com.cambiaso.ioc.persistence.entity.UserRoleKey;
+&nbsp;import com.cambiaso.ioc.persistence.entity.RolePermission;
+&nbsp;import com.cambiaso.ioc.persistence.entity.RolePermissionKey;
 &nbsp;import org.springframework.data.jpa.repository.JpaRepository;
-&nbsp;import org.springframework.data.jpa.repository.Modifying;
 &nbsp;import org.springframework.data.jpa.repository.Query;
 &nbsp;import org.springframework.data.repository.query.Param;
-&nbsp;import org.springframework.transaction.annotation.Transactional;
 &nbsp;
 &nbsp;import java.util.List;
 &nbsp;
-&nbsp;public interface UserRoleRepository extends JpaRepository&lt;UserRole, UserRoleKey&gt; {
+&nbsp;public interface RolePermissionRepository extends JpaRepository&lt;RolePermission, RolePermissionKey&gt; {
+&nbsp;    boolean existsByRole_Id(Integer roleId);
+&nbsp;    boolean existsByPermission_Id(Integer permissionId);
 &nbsp;
-&nbsp;    boolean existsByIdUserIdAndIdRoleId(Long userId, Integer roleId);
-&nbsp;
-&nbsp;    boolean existsByIdRoleId(Integer roleId);
-&nbsp;
-&nbsp;    @Modifying
-&nbsp;    @Transactional
-&nbsp;    void deleteByIdUserIdAndIdRoleId(Long userId, Integer roleId);
-&nbsp;
-&nbsp;    @Query(&quot;SELECT r.name FROM UserRole ur JOIN ur.role r WHERE ur.id.userId = :userId ORDER BY r.name&quot;)
-&nbsp;    List&lt;String&gt; findRoleNamesByUserId(@Param(&quot;userId&quot;) long userId);
+&nbsp;    @Query(&quot;SELECT p.name FROM RolePermission rp JOIN rp.permission p WHERE rp.role.id = :roleId ORDER BY p.name&quot;)
+&nbsp;    List&lt;String&gt; findPermissionNamesByRoleId(@Param(&quot;roleId&quot;) Integer roleId);
 &nbsp;}
-&nbsp;
 </code>
 </pre>
 </div>
@@ -88,7 +79,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

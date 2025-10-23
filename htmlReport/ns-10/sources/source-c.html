@@ -48,7 +48,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     0%
   </span>
   <span class="absValue">
-    (0/6)
+    (0/9)
   </span>
 </td>
 <td class="coverageStat">
@@ -64,7 +64,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     0%
   </span>
   <span class="absValue">
-    (0/24)
+    (0/31)
   </span>
 </td>
 </tr>
@@ -78,7 +78,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     0%
   </span>
   <span class="absValue">
-    (0/6)
+    (0/9)
   </span>
 </td>
 <td class="coverageStat">
@@ -94,7 +94,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     0%
   </span>
   <span class="absValue">
-    (0/24)
+    (0/31)
   </span>
 </td>
 </tr>
@@ -108,8 +108,10 @@ Current scope:     <a href="../../index.html">all classes</a>
 <code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.service;
 &nbsp;
 &nbsp;import com.cambiaso.ioc.dto.request.RoleRequest;
+&nbsp;import com.cambiaso.ioc.dto.response.RoleResponse;
 &nbsp;import com.cambiaso.ioc.exception.ResourceConflictException;
 &nbsp;import com.cambiaso.ioc.exception.ResourceNotFoundException;
+&nbsp;import com.cambiaso.ioc.mapper.RoleMapper;
 &nbsp;import com.cambiaso.ioc.persistence.entity.Role;
 &nbsp;import com.cambiaso.ioc.persistence.repository.RolePermissionRepository;
 &nbsp;import com.cambiaso.ioc.persistence.repository.RoleRepository;
@@ -120,6 +122,8 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;import org.springframework.stereotype.Service;
 &nbsp;import org.springframework.transaction.annotation.Transactional;
 &nbsp;
+&nbsp;import java.util.List;
+&nbsp;
 &nbsp;@Service
 &nbsp;@RequiredArgsConstructor
 &nbsp;@Transactional
@@ -128,6 +132,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;    private final RoleRepository roleRepository;
 &nbsp;    private final UserRoleRepository userRoleRepository;
 &nbsp;    private final RolePermissionRepository rolePermissionRepository;
+&nbsp;    private final RoleMapper roleMapper;
 &nbsp;
 &nbsp;    @Transactional(readOnly = true)
 &nbsp;    public Page&lt;Role&gt; search(String search, Pageable pageable) {
@@ -138,6 +143,24 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;    public Role getById(Integer id) {
 <b class="nc">&nbsp;        return roleRepository.findById(id)</b>
 <b class="nc">&nbsp;                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Role not found: &quot; + id));</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Transactional(readOnly = true)
+&nbsp;    public RoleResponse getByIdWithDetails(Integer id) {
+<b class="nc">&nbsp;        Role role = getById(id);</b>
+<b class="nc">&nbsp;        return enrichResponse(role);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Transactional(readOnly = true)
+&nbsp;    public Page&lt;RoleResponse&gt; searchWithDetails(String search, Pageable pageable) {
+<b class="nc">&nbsp;        Page&lt;Role&gt; roles = search(search, pageable);</b>
+<b class="nc">&nbsp;        return roles.map(this::enrichResponse);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    private RoleResponse enrichResponse(Role role) {
+<b class="nc">&nbsp;        long usersCount = userRoleRepository.countByIdRoleId(role.getId());</b>
+<b class="nc">&nbsp;        List&lt;String&gt; permissions = rolePermissionRepository.findPermissionNamesByRoleId(role.getId());</b>
+<b class="nc">&nbsp;        return roleMapper.toResponse(role, usersCount, permissions);</b>
 &nbsp;    }
 &nbsp;
 &nbsp;    public Role create(RoleRequest request) {
@@ -176,7 +199,6 @@ Current scope:     <a href="../../index.html">all classes</a>
 <b class="nc">&nbsp;        roleRepository.delete(role);</b>
 &nbsp;    }
 &nbsp;}
-&nbsp;
 </code>
 </pre>
 </div>
@@ -200,7 +222,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

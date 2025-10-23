@@ -52,7 +52,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     0%
   </span>
   <span class="absValue">
-    (0/18)
+    (0/14)
   </span>
 </td>
 </tr>
@@ -74,7 +74,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     0%
   </span>
   <span class="absValue">
-    (0/18)
+    (0/14)
   </span>
 </td>
 </tr>
@@ -95,14 +95,11 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;import jakarta.validation.Valid;
 &nbsp;import lombok.RequiredArgsConstructor;
 &nbsp;import org.springframework.data.domain.Page;
-&nbsp;import org.springframework.data.domain.PageImpl;
 &nbsp;import org.springframework.data.domain.PageRequest;
 &nbsp;import org.springframework.data.domain.Pageable;
 &nbsp;import org.springframework.http.ResponseEntity;
 &nbsp;import org.springframework.security.access.prepost.PreAuthorize;
 &nbsp;import org.springframework.web.bind.annotation.*;
-&nbsp;
-&nbsp;import java.util.List;
 &nbsp;
 &nbsp;@RestController
 &nbsp;@RequestMapping(&quot;/api/admin/roles&quot;)
@@ -118,33 +115,29 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;            @RequestParam(value = &quot;search&quot;, required = false) String search,
 &nbsp;            Pageable pageable) {
 <b class="nc">&nbsp;        Pageable effective = clamp(pageable);</b>
-<b class="nc">&nbsp;        Page&lt;Role&gt; page = roleService.search(search, effective);</b>
-<b class="nc">&nbsp;        List&lt;RoleResponse&gt; content = page.getContent().stream()</b>
-<b class="nc">&nbsp;                .map(roleMapper::toResponse)</b>
-<b class="nc">&nbsp;                .toList();</b>
-<b class="nc">&nbsp;        Page&lt;RoleResponse&gt; mapped = new PageImpl&lt;&gt;(content, effective, page.getTotalElements());</b>
-<b class="nc">&nbsp;        return ResponseEntity.ok(mapped);</b>
+<b class="nc">&nbsp;        Page&lt;RoleResponse&gt; page = roleService.searchWithDetails(search, effective);</b>
+<b class="nc">&nbsp;        return ResponseEntity.ok(page);</b>
 &nbsp;    }
 &nbsp;
 &nbsp;    @GetMapping(&quot;/{id}&quot;)
 &nbsp;    @PreAuthorize(&quot;hasAuthority(&#39;ROLE_ADMIN&#39;)&quot;)
 &nbsp;    public ResponseEntity&lt;RoleResponse&gt; getById(@PathVariable Integer id) {
-<b class="nc">&nbsp;        Role role = roleService.getById(id);</b>
-<b class="nc">&nbsp;        return ResponseEntity.ok(roleMapper.toResponse(role));</b>
+<b class="nc">&nbsp;        RoleResponse response = roleService.getByIdWithDetails(id);</b>
+<b class="nc">&nbsp;        return ResponseEntity.ok(response);</b>
 &nbsp;    }
 &nbsp;
 &nbsp;    @PostMapping
 &nbsp;    @PreAuthorize(&quot;hasAuthority(&#39;ROLE_ADMIN&#39;)&quot;)
 &nbsp;    public ResponseEntity&lt;RoleResponse&gt; create(@Valid @RequestBody RoleRequest request) {
 <b class="nc">&nbsp;        Role created = roleService.create(request);</b>
-<b class="nc">&nbsp;        return ResponseEntity.ok(roleMapper.toResponse(created));</b>
+<b class="nc">&nbsp;        return ResponseEntity.ok(roleMapper.toResponse(created, 0, java.util.Collections.emptyList()));</b>
 &nbsp;    }
 &nbsp;
 &nbsp;    @PutMapping(&quot;/{id}&quot;)
 &nbsp;    @PreAuthorize(&quot;hasAuthority(&#39;ROLE_ADMIN&#39;)&quot;)
 &nbsp;    public ResponseEntity&lt;RoleResponse&gt; update(@PathVariable Integer id, @Valid @RequestBody RoleRequest request) {
 <b class="nc">&nbsp;        Role updated = roleService.update(id, request);</b>
-<b class="nc">&nbsp;        return ResponseEntity.ok(roleMapper.toResponse(updated));</b>
+<b class="nc">&nbsp;        return ResponseEntity.ok(roleService.getByIdWithDetails(updated.getId()));</b>
 &nbsp;    }
 &nbsp;
 &nbsp;    @DeleteMapping(&quot;/{id}&quot;)
@@ -160,7 +153,6 @@ Current scope:     <a href="../../index.html">all classes</a>
 <b class="nc">&nbsp;        return PageRequest.of(page, size, pageable.getSort());</b>
 &nbsp;    }
 &nbsp;}
-&nbsp;
 </code>
 </pre>
 </div>
@@ -184,7 +176,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

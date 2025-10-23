@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > UsuarioMapper</title>
+  <title>Coverage Report > RoleMapperImpl</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,7 +22,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.mapper</a>
 </div>
 
-<h1>Coverage Summary for Class: UsuarioMapper (com.cambiaso.ioc.mapper)</h1>
+<h1>Coverage Summary for Class: RoleMapperImpl (com.cambiaso.ioc.mapper)</h1>
 
 <table class="coverageStats">
 <tr>
@@ -37,17 +37,29 @@ Current scope:     <a href="../../index.html">all classes</a>
 </th>
 <th class="coverageStat 
 ">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
   Line, %
 </th>
 </tr>
 <tr>
-  <td class="name">UsuarioMapper</td>
+  <td class="name">RoleMapperImpl</td>
 <td class="coverageStat">
   <span class="percent">
-    0%
+    100%
   </span>
   <span class="absValue">
-    (0/1)
+    (1/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    50%
+  </span>
+  <span class="absValue">
+    (1/2)
   </span>
 </td>
 <td class="coverageStat">
@@ -55,15 +67,15 @@ Current scope:     <a href="../../index.html">all classes</a>
     0%
   </span>
   <span class="absValue">
-    (0/1)
+    (0/4)
   </span>
 </td>
 <td class="coverageStat">
   <span class="percent">
-    0%
+    11.1%
   </span>
   <span class="absValue">
-    (0/5)
+    (1/9)
   </span>
 </td>
 </tr>
@@ -77,39 +89,34 @@ Current scope:     <a href="../../index.html">all classes</a>
 <pre>
 <code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.mapper;
 &nbsp;
-&nbsp;import com.cambiaso.ioc.dto.response.UsuarioResponse;
-&nbsp;import com.cambiaso.ioc.persistence.entity.AppUser;
-&nbsp;import org.mapstruct.Mapper;
-&nbsp;import org.mapstruct.Mapping;
+&nbsp;import com.cambiaso.ioc.dto.response.RoleResponse;
+&nbsp;import com.cambiaso.ioc.persistence.entity.Role;
+&nbsp;import javax.annotation.processing.Generated;
+&nbsp;import org.springframework.stereotype.Component;
 &nbsp;
-&nbsp;import java.util.List;
-&nbsp;import java.util.Objects;
-&nbsp;import java.util.stream.Collectors;
-&nbsp;import java.util.stream.Stream;
+&nbsp;@Generated(
+&nbsp;    value = &quot;org.mapstruct.ap.MappingProcessor&quot;,
+&nbsp;    date = &quot;2025-10-22T11:41:13-0300&quot;,
+&nbsp;    comments = &quot;version: 1.6.2, compiler: javac, environment: Java 21.0.8 (Eclipse Adoptium)&quot;
+&nbsp;)
+&nbsp;@Component
+<b class="fc">&nbsp;public class RoleMapperImpl implements RoleMapper {</b>
 &nbsp;
-&nbsp;@Mapper(componentModel = &quot;spring&quot;)
-&nbsp;public interface UsuarioMapper {
+&nbsp;    @Override
+&nbsp;    public RoleResponse toResponse(Role entity) {
+<b class="nc">&nbsp;        if ( entity == null ) {</b>
+<b class="nc">&nbsp;            return null;</b>
+&nbsp;        }
 &nbsp;
-&nbsp;    @Mapping(target = &quot;id&quot;, source = &quot;entity.id&quot;)
-&nbsp;    @Mapping(target = &quot;email&quot;, source = &quot;entity.email&quot;)
-&nbsp;    @Mapping(target = &quot;fullName&quot;, expression = &quot;java(getFullName(entity))&quot;)
-&nbsp;    @Mapping(target = &quot;plantaId&quot;, source = &quot;entity.planta.id&quot;)
-&nbsp;    @Mapping(target = &quot;plantaCode&quot;, source = &quot;entity.planta.code&quot;)
-&nbsp;    @Mapping(target = &quot;plantaName&quot;, source = &quot;entity.planta.name&quot;)
-&nbsp;    @Mapping(target = &quot;centroCosto&quot;, source = &quot;entity.centroCosto&quot;)
-&nbsp;    @Mapping(target = &quot;fechaContrato&quot;, source = &quot;entity.fechaContrato&quot;)
-&nbsp;    @Mapping(target = &quot;isActive&quot;, source = &quot;entity.active&quot;)
-&nbsp;    @Mapping(target = &quot;createdAt&quot;, source = &quot;entity.createdAt&quot;)
-&nbsp;    @Mapping(target = &quot;updatedAt&quot;, source = &quot;entity.updatedAt&quot;)
-&nbsp;    @Mapping(target = &quot;roles&quot;, source = &quot;roles&quot;)
-&nbsp;    UsuarioResponse toResponse(AppUser entity, List&lt;String&gt; roles);
+<b class="nc">&nbsp;        RoleResponse roleResponse = new RoleResponse();</b>
 &nbsp;
-&nbsp;    default String getFullName(AppUser u) {
-<b class="nc">&nbsp;        return Stream.of(u.getPrimerNombre(), u.getSegundoNombre(), u.getPrimerApellido(), u.getSegundoApellido())</b>
-<b class="nc">&nbsp;                .filter(Objects::nonNull)</b>
-<b class="nc">&nbsp;                .map(String::trim)</b>
-<b class="nc">&nbsp;                .filter(s -&gt; !s.isEmpty())</b>
-<b class="nc">&nbsp;                .collect(Collectors.joining(&quot; &quot;));</b>
+<b class="nc">&nbsp;        if ( entity.getId() != null ) {</b>
+<b class="nc">&nbsp;            roleResponse.setId( entity.getId() );</b>
+&nbsp;        }
+<b class="nc">&nbsp;        roleResponse.setName( entity.getName() );</b>
+<b class="nc">&nbsp;        roleResponse.setDescription( entity.getDescription() );</b>
+&nbsp;
+<b class="nc">&nbsp;        return roleResponse;</b>
 &nbsp;    }
 &nbsp;}
 </code>
@@ -135,7 +142,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

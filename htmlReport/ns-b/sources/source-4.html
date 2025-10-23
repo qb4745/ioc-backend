@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > UsuarioMapperImpl</title>
+  <title>Coverage Report > UsuarioMapper</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,7 +22,7 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.mapper</a>
 </div>
 
-<h1>Coverage Summary for Class: UsuarioMapperImpl (com.cambiaso.ioc.mapper)</h1>
+<h1>Coverage Summary for Class: UsuarioMapper (com.cambiaso.ioc.mapper)</h1>
 
 <table class="coverageStats">
 <tr>
@@ -37,29 +37,17 @@ Current scope:     <a href="../../index.html">all classes</a>
 </th>
 <th class="coverageStat 
 ">
-  Branch, %
-</th>
-<th class="coverageStat 
-">
   Line, %
 </th>
 </tr>
 <tr>
-  <td class="name">UsuarioMapperImpl</td>
+  <td class="name">UsuarioMapper</td>
 <td class="coverageStat">
   <span class="percent">
-    100%
+    0%
   </span>
   <span class="absValue">
-    (1/1)
-  </span>
-</td>
-<td class="coverageStat">
-  <span class="percent">
-    20%
-  </span>
-  <span class="absValue">
-    (1/5)
+    (0/1)
   </span>
 </td>
 <td class="coverageStat">
@@ -67,15 +55,15 @@ Current scope:     <a href="../../index.html">all classes</a>
     0%
   </span>
   <span class="absValue">
-    (0/16)
+    (0/1)
   </span>
 </td>
 <td class="coverageStat">
   <span class="percent">
-    3%
+    0%
   </span>
   <span class="absValue">
-    (1/33)
+    (0/5)
   </span>
 </td>
 </tr>
@@ -91,73 +79,37 @@ Current scope:     <a href="../../index.html">all classes</a>
 &nbsp;
 &nbsp;import com.cambiaso.ioc.dto.response.UsuarioResponse;
 &nbsp;import com.cambiaso.ioc.persistence.entity.AppUser;
-&nbsp;import com.cambiaso.ioc.persistence.entity.Planta;
-&nbsp;import java.util.ArrayList;
+&nbsp;import org.mapstruct.Mapper;
+&nbsp;import org.mapstruct.Mapping;
+&nbsp;
 &nbsp;import java.util.List;
-&nbsp;import javax.annotation.processing.Generated;
-&nbsp;import org.springframework.stereotype.Component;
+&nbsp;import java.util.Objects;
+&nbsp;import java.util.stream.Collectors;
+&nbsp;import java.util.stream.Stream;
 &nbsp;
-&nbsp;@Generated(
-&nbsp;    value = &quot;org.mapstruct.ap.MappingProcessor&quot;,
-&nbsp;    date = &quot;2025-10-22T07:05:51-0300&quot;,
-&nbsp;    comments = &quot;version: 1.6.2, compiler: javac, environment: Java 24 (Eclipse Adoptium)&quot;
-&nbsp;)
-&nbsp;@Component
-<b class="fc">&nbsp;public class UsuarioMapperImpl implements UsuarioMapper {</b>
+&nbsp;@Mapper(componentModel = &quot;spring&quot;)
+&nbsp;public interface UsuarioMapper {
 &nbsp;
-&nbsp;    @Override
-&nbsp;    public UsuarioResponse toResponse(AppUser entity, List&lt;String&gt; roles) {
-<b class="nc">&nbsp;        if ( entity == null &amp;&amp; roles == null ) {</b>
-<b class="nc">&nbsp;            return null;</b>
-&nbsp;        }
+&nbsp;    @Mapping(target = &quot;id&quot;, source = &quot;entity.id&quot;)
+&nbsp;    @Mapping(target = &quot;email&quot;, source = &quot;entity.email&quot;)
+&nbsp;    @Mapping(target = &quot;fullName&quot;, expression = &quot;java(getFullName(entity))&quot;)
+&nbsp;    @Mapping(target = &quot;plantaId&quot;, source = &quot;entity.planta.id&quot;)
+&nbsp;    @Mapping(target = &quot;plantaCode&quot;, source = &quot;entity.planta.code&quot;)
+&nbsp;    @Mapping(target = &quot;plantaName&quot;, source = &quot;entity.planta.name&quot;)
+&nbsp;    @Mapping(target = &quot;centroCosto&quot;, source = &quot;entity.centroCosto&quot;)
+&nbsp;    @Mapping(target = &quot;fechaContrato&quot;, source = &quot;entity.fechaContrato&quot;)
+&nbsp;    @Mapping(target = &quot;isActive&quot;, source = &quot;entity.active&quot;)
+&nbsp;    @Mapping(target = &quot;createdAt&quot;, source = &quot;entity.createdAt&quot;)
+&nbsp;    @Mapping(target = &quot;updatedAt&quot;, source = &quot;entity.updatedAt&quot;)
+&nbsp;    @Mapping(target = &quot;roles&quot;, source = &quot;roles&quot;)
+&nbsp;    UsuarioResponse toResponse(AppUser entity, List&lt;String&gt; roles);
 &nbsp;
-<b class="nc">&nbsp;        UsuarioResponse usuarioResponse = new UsuarioResponse();</b>
-&nbsp;
-<b class="nc">&nbsp;        if ( entity != null ) {</b>
-<b class="nc">&nbsp;            if ( entity.getId() != null ) {</b>
-<b class="nc">&nbsp;                usuarioResponse.setId( entity.getId() );</b>
-&nbsp;            }
-<b class="nc">&nbsp;            usuarioResponse.setEmail( entity.getEmail() );</b>
-<b class="nc">&nbsp;            usuarioResponse.setPlantaId( entityPlantaId( entity ) );</b>
-<b class="nc">&nbsp;            usuarioResponse.setPlantaCode( entityPlantaCode( entity ) );</b>
-<b class="nc">&nbsp;            usuarioResponse.setPlantaName( entityPlantaName( entity ) );</b>
-<b class="nc">&nbsp;            usuarioResponse.setCentroCosto( entity.getCentroCosto() );</b>
-<b class="nc">&nbsp;            usuarioResponse.setFechaContrato( entity.getFechaContrato() );</b>
-<b class="nc">&nbsp;            usuarioResponse.setIsActive( entity.isActive() );</b>
-<b class="nc">&nbsp;            usuarioResponse.setCreatedAt( entity.getCreatedAt() );</b>
-<b class="nc">&nbsp;            usuarioResponse.setUpdatedAt( entity.getUpdatedAt() );</b>
-&nbsp;        }
-<b class="nc">&nbsp;        List&lt;String&gt; list = roles;</b>
-<b class="nc">&nbsp;        if ( list != null ) {</b>
-<b class="nc">&nbsp;            usuarioResponse.setRoles( new ArrayList&lt;String&gt;( list ) );</b>
-&nbsp;        }
-<b class="nc">&nbsp;        usuarioResponse.setFullName( getFullName(entity) );</b>
-&nbsp;
-<b class="nc">&nbsp;        return usuarioResponse;</b>
-&nbsp;    }
-&nbsp;
-&nbsp;    private Integer entityPlantaId(AppUser appUser) {
-<b class="nc">&nbsp;        Planta planta = appUser.getPlanta();</b>
-<b class="nc">&nbsp;        if ( planta == null ) {</b>
-<b class="nc">&nbsp;            return null;</b>
-&nbsp;        }
-<b class="nc">&nbsp;        return planta.getId();</b>
-&nbsp;    }
-&nbsp;
-&nbsp;    private String entityPlantaCode(AppUser appUser) {
-<b class="nc">&nbsp;        Planta planta = appUser.getPlanta();</b>
-<b class="nc">&nbsp;        if ( planta == null ) {</b>
-<b class="nc">&nbsp;            return null;</b>
-&nbsp;        }
-<b class="nc">&nbsp;        return planta.getCode();</b>
-&nbsp;    }
-&nbsp;
-&nbsp;    private String entityPlantaName(AppUser appUser) {
-<b class="nc">&nbsp;        Planta planta = appUser.getPlanta();</b>
-<b class="nc">&nbsp;        if ( planta == null ) {</b>
-<b class="nc">&nbsp;            return null;</b>
-&nbsp;        }
-<b class="nc">&nbsp;        return planta.getName();</b>
+&nbsp;    default String getFullName(AppUser u) {
+<b class="nc">&nbsp;        return Stream.of(u.getPrimerNombre(), u.getSegundoNombre(), u.getPrimerApellido(), u.getSegundoApellido())</b>
+<b class="nc">&nbsp;                .filter(Objects::nonNull)</b>
+<b class="nc">&nbsp;                .map(String::trim)</b>
+<b class="nc">&nbsp;                .filter(s -&gt; !s.isEmpty())</b>
+<b class="nc">&nbsp;                .collect(Collectors.joining(&quot; &quot;));</b>
 &nbsp;    }
 &nbsp;}
 </code>
@@ -183,7 +135,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

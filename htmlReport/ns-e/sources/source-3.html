@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > PlantaRepository</title>
+  <title>Coverage Report > DimMaquinaRepository</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,14 +22,14 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.persistence.repository</a>
 </div>
 
-<h1>Coverage Summary for Class: PlantaRepository (com.cambiaso.ioc.persistence.repository)</h1>
+<h1>Coverage Summary for Class: DimMaquinaRepository (com.cambiaso.ioc.persistence.repository)</h1>
 
 <table class="coverageStats">
 <tr>
   <th class="name">Class</th>
 </tr>
 <tr>
-  <td class="name">PlantaRepository</td>
+  <td class="name">DimMaquinaRepository</td>
 </tr>
 
 </table>
@@ -41,15 +41,14 @@ Current scope:     <a href="../../index.html">all classes</a>
 <pre>
 <code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.persistence.repository;
 &nbsp;
-&nbsp;import com.cambiaso.ioc.persistence.entity.Planta;
+&nbsp;import com.cambiaso.ioc.persistence.entity.DimMaquina;
 &nbsp;import org.springframework.data.jpa.repository.JpaRepository;
 &nbsp;
 &nbsp;import java.util.Optional;
 &nbsp;
-&nbsp;public interface PlantaRepository extends JpaRepository&lt;Planta, Integer&gt; {
-&nbsp;    Optional&lt;Planta&gt; findByCodeIgnoreCase(String code);
+&nbsp;public interface DimMaquinaRepository extends JpaRepository&lt;DimMaquina, Long&gt; {
+&nbsp;    Optional&lt;DimMaquina&gt; findByCodigoMaquina(String codigoMaquina);
 &nbsp;}
-&nbsp;
 </code>
 </pre>
 </div>
@@ -73,7 +72,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

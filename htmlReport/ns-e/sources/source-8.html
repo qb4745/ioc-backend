@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > PermissionRepository</title>
+  <title>Coverage Report > PlantaRepository</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,14 +22,14 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.persistence.repository</a>
 </div>
 
-<h1>Coverage Summary for Class: PermissionRepository (com.cambiaso.ioc.persistence.repository)</h1>
+<h1>Coverage Summary for Class: PlantaRepository (com.cambiaso.ioc.persistence.repository)</h1>
 
 <table class="coverageStats">
 <tr>
   <th class="name">Class</th>
 </tr>
 <tr>
-  <td class="name">PermissionRepository</td>
+  <td class="name">PlantaRepository</td>
 </tr>
 
 </table>
@@ -41,21 +41,13 @@ Current scope:     <a href="../../index.html">all classes</a>
 <pre>
 <code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.persistence.repository;
 &nbsp;
-&nbsp;import com.cambiaso.ioc.persistence.entity.Permission;
-&nbsp;import org.springframework.data.domain.Page;
-&nbsp;import org.springframework.data.domain.Pageable;
+&nbsp;import com.cambiaso.ioc.persistence.entity.Planta;
 &nbsp;import org.springframework.data.jpa.repository.JpaRepository;
-&nbsp;import org.springframework.data.jpa.repository.Query;
-&nbsp;import org.springframework.data.repository.query.Param;
 &nbsp;
 &nbsp;import java.util.Optional;
 &nbsp;
-&nbsp;public interface PermissionRepository extends JpaRepository&lt;Permission, Integer&gt; {
-&nbsp;    Optional&lt;Permission&gt; findByNameIgnoreCase(String name);
-&nbsp;    boolean existsByNameIgnoreCase(String name);
-&nbsp;
-&nbsp;    @Query(&quot;SELECT p FROM Permission p WHERE (:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT(&#39;%&#39;, :search, &#39;%&#39;)))&quot;)
-&nbsp;    Page&lt;Permission&gt; search(@Param(&quot;search&quot;) String search, Pageable pageable);
+&nbsp;public interface PlantaRepository extends JpaRepository&lt;Planta, Integer&gt; {
+&nbsp;    Optional&lt;Planta&gt; findByCodeIgnoreCase(String code);
 &nbsp;}
 &nbsp;
 </code>
@@ -81,7 +73,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>

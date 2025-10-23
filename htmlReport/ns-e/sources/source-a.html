@@ -5,7 +5,7 @@
 <html id="htmlId">
 <head>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
-  <title>Coverage Report > AppUserSearchRepository</title>
+  <title>Coverage Report > EtlJobRepository</title>
   <style type="text/css">
     @import "../../css/coverage.css";
     @import "../../css/idea.min.css";
@@ -22,14 +22,14 @@ Current scope:     <a href="../../index.html">all classes</a>
     <a href="../index.html">com.cambiaso.ioc.persistence.repository</a>
 </div>
 
-<h1>Coverage Summary for Class: AppUserSearchRepository (com.cambiaso.ioc.persistence.repository)</h1>
+<h1>Coverage Summary for Class: EtlJobRepository (com.cambiaso.ioc.persistence.repository)</h1>
 
 <table class="coverageStats">
 <tr>
   <th class="name">Class</th>
 </tr>
 <tr>
-  <td class="name">AppUserSearchRepository</td>
+  <td class="name">EtlJobRepository</td>
 </tr>
 
 </table>
@@ -41,14 +41,48 @@ Current scope:     <a href="../../index.html">all classes</a>
 <pre>
 <code class="sourceCode" id="sourceCode">&nbsp;package com.cambiaso.ioc.persistence.repository;
 &nbsp;
-&nbsp;import com.cambiaso.ioc.persistence.entity.AppUser;
-&nbsp;import org.springframework.data.domain.Page;
-&nbsp;import org.springframework.data.domain.Pageable;
+&nbsp;import com.cambiaso.ioc.persistence.entity.EtlJob;
+&nbsp;import org.springframework.data.jpa.repository.JpaRepository;
+&nbsp;import org.springframework.data.jpa.repository.Query;
+&nbsp;import org.springframework.data.repository.query.Param;
+&nbsp;import org.springframework.stereotype.Repository;
 &nbsp;
-&nbsp;public interface AppUserSearchRepository {
-&nbsp;    Page&lt;AppUser&gt; search(String search, Integer plantaId, Boolean isActive, Pageable pageable);
+&nbsp;import java.time.LocalDate;
+&nbsp;import java.time.OffsetDateTime;
+&nbsp;import java.util.List;
+&nbsp;import java.util.Optional;
+&nbsp;import java.util.UUID;
+&nbsp;
+&nbsp;@Repository
+&nbsp;public interface EtlJobRepository extends JpaRepository&lt;EtlJob, UUID&gt;, EtlJobRepositoryCustom {
+&nbsp;    Optional&lt;EtlJob&gt; findByFileHash(String fileHash);
+&nbsp;
+&nbsp;    boolean existsByStatusInAndMaxDateGreaterThanEqualAndMinDateLessThanEqual(
+&nbsp;            List&lt;String&gt; statuses,
+&nbsp;            LocalDate minDate,
+&nbsp;            LocalDate maxDate
+&nbsp;    );
+&nbsp;
+&nbsp;    @Query(&quot;SELECT CASE WHEN COUNT(j) &gt; 0 THEN true ELSE false END &quot; +
+&nbsp;           &quot;FROM EtlJob j &quot; +
+&nbsp;           &quot;WHERE j.status IN (&#39;INICIADO&#39;, &#39;PROCESANDO&#39;, &#39;SINCRONIZANDO&#39;) &quot; +
+&nbsp;           &quot;AND j.jobId &lt;&gt; :jobId &quot; + // Exclude the current job from the check
+&nbsp;           &quot;AND j.minDate IS NOT NULL AND j.maxDate IS NOT NULL &quot; +
+&nbsp;           &quot;AND NOT (j.maxDate &lt; :minDate OR j.minDate &gt; :maxDate)&quot;)
+&nbsp;    boolean existsActiveJobInDateRange(
+&nbsp;            @Param(&quot;jobId&quot;) UUID jobId,
+&nbsp;            @Param(&quot;minDate&quot;) LocalDate minDate,
+&nbsp;            @Param(&quot;maxDate&quot;) LocalDate maxDate
+&nbsp;    );
+&nbsp;
+&nbsp;    long countByStatusIn(List&lt;String&gt; statuses);
+&nbsp;
+&nbsp;    @Query(&quot;SELECT COUNT(j) FROM EtlJob j WHERE j.status IN :statuses AND j.finishedAt IS NULL AND j.createdAt &lt; :cutoff&quot;)
+&nbsp;    long countStuck(@Param(&quot;statuses&quot;) List&lt;String&gt; statuses, @Param(&quot;cutoff&quot;) OffsetDateTime cutoff);
+&nbsp;
+&nbsp;    // markStuckAsFailed ahora se implementa vía repositorio custom para evitar incompatibilidad JPQL con OffsetDateTime
+&nbsp;    int markStuckAsFailed(OffsetDateTime cutoff);
 &nbsp;}
-&nbsp;
 </code>
 </pre>
 </div>
@@ -72,7 +106,7 @@ Current scope:     <a href="../../index.html">all classes</a>
 
 <div class="footer">
     
-    <div style="float:right;">generated on 2025-10-22 07:08</div>
+    <div style="float:right;">generated on 2025-10-22 11:44</div>
 </div>
 </body>
 </html>
