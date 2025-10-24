@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -23,19 +24,72 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.ArrayList;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.context.SecurityContextPersistenceFilter;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.web.context.HttpRequestResponseHolder;
+import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+
     @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
     private String issuerUri;
+
+    @Bean
+    public OncePerRequestFilter jwtAuthoritiesAugmentor(Converter<Jwt, Collection<GrantedAuthority>> jwtAuthoritiesConverter) {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+                var context = org.springframework.security.core.context.SecurityContextHolder.getContext();
+                Authentication authentication = context.getAuthentication();
+                if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+                    Jwt jwt = jwtAuth.getToken();
+                    log.debug("jwtAuthoritiesAugmentor: before={}, claims roles={}, direct roles={}",
+                            jwtAuth.getAuthorities(),
+                            (jwt.getClaim("realm_access") instanceof java.util.Map ra) ? ra.get("roles") : null,
+                            jwt.getClaimAsStringList("roles"));
+                    Collection<GrantedAuthority> extracted = jwtAuthoritiesConverter.convert(jwt);
+                    Set<GrantedAuthority> merged = new HashSet<>(jwtAuth.getAuthorities());
+                    boolean changed = false;
+                    if (extracted != null && !extracted.isEmpty()) {
+                        changed = merged.addAll(extracted);
+                    }
+                    if (changed) {
+                        // Preserve the name/principal and details
+                        JwtAuthenticationToken replacement = new JwtAuthenticationToken(jwt, merged, jwtAuth.getName());
+                        replacement.setDetails(jwtAuth.getDetails());
+                        context.setAuthentication(replacement);
+                        log.debug("jwtAuthoritiesAugmentor: after={} (added={})", merged, extracted);
+                    } else {
+                        log.debug("jwtAuthoritiesAugmentor: no changes to authorities");
+                    }
+                }
+                filterChain.doFilter(request, response);
+            }
+        };
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -55,6 +109,8 @@ public class SecurityConfig {
                 )
                 // Configure the app as an OAuth2 Resource Server to validate JWTs
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder()).jwtAuthenticationConverter(jwtAuthenticationConverter())))
+                // Ensure Jwt set by tests (MockMvc jwt()) gets enriched with ROLE_ authorities from claims
+                .addFilterAfter(jwtAuthoritiesAugmentor(jwtGrantedAuthoritiesConverter()), SecurityContextPersistenceFilter.class)
                 // Add security headers for embedding protection
                 .headers(headers -> headers
                     // Disables the default X-Frame-Options header which is DENY
@@ -104,39 +160,48 @@ public class SecurityConfig {
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(this.jwtGrantedAuthoritiesConverter());
+        converter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter());
         return converter;
     }
 
-    private Converter<Jwt, Collection<GrantedAuthority>> jwtGrantedAuthoritiesConverter() {
+    @Bean
+    public Converter<Jwt, Collection<GrantedAuthority>> jwtGrantedAuthoritiesConverter() {
         return jwt -> {
-            List<GrantedAuthority> authorities = new ArrayList<>();
+            // Use a Set to avoid duplicate authorities
+            Set<GrantedAuthority> authorities = new HashSet<>();
 
-            // 1) Extract roles from realm_access.roles (Keycloak-style)
+            // 1) Preserve default scope conversion (SCOPE_... authorities)
+            JwtGrantedAuthoritiesConverter scopesConverter = new JwtGrantedAuthoritiesConverter();
+            Collection<GrantedAuthority> scopeAuthorities = scopesConverter.convert(jwt);
+            if (scopeAuthorities != null) authorities.addAll(scopeAuthorities);
+
+            // Helper to normalize a role name to have a single ROLE_ prefix
+            java.util.function.Function<String, String> normalizeRole = r -> r == null ? null : (r.startsWith("ROLE_") ? r : "ROLE_" + r);
+
+            // 2) Extract roles from realm_access.roles (Keycloak-style)
             Object realmAccess = jwt.getClaim("realm_access");
             if (realmAccess instanceof Map) {
                 Object rolesObj = ((Map<?, ?>) realmAccess).get("roles");
                 if (rolesObj instanceof List) {
                     List<?> roles = (List<?>) rolesObj;
-                    authorities.addAll(roles.stream()
+                    roles.stream()
                             .map(Object::toString)
-                            .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
-                            .collect(Collectors.toList()));
+                            .map(normalizeRole)
+                            .filter(java.util.Objects::nonNull)
+                            .map(SimpleGrantedAuthority::new)
+                            .forEach(authorities::add);
                 }
             }
 
-            // 2) Extract roles claim if present (simple list claim)
+            // 3) Extract roles from a simple "roles" claim if present
             List<String> directRoles = jwt.getClaimAsStringList("roles");
             if (directRoles != null) {
-                authorities.addAll(directRoles.stream()
-                        .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
-                        .collect(Collectors.toList()));
+                directRoles.stream()
+                        .map(normalizeRole)
+                        .filter(java.util.Objects::nonNull)
+                        .map(SimpleGrantedAuthority::new)
+                        .forEach(authorities::add);
             }
-
-            // 3) Also include scope-based authorities (default converter) to support scopes
-            JwtGrantedAuthoritiesConverter scopesConverter = new JwtGrantedAuthoritiesConverter();
-            Collection<GrantedAuthority> scopeAuthorities = scopesConverter.convert(jwt);
-            if (scopeAuthorities != null) authorities.addAll(scopeAuthorities);
 
             return authorities;
         };

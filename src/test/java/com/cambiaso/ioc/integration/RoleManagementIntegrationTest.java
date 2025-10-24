@@ -1,4 +1,5 @@
 package com.cambiaso.ioc.integration;
+import com.cambiaso.ioc.config.TestApplication;
 import com.cambiaso.ioc.dto.request.PermissionRequest;
 import com.cambiaso.ioc.dto.request.RoleRequest;
 import com.cambiaso.ioc.dto.request.UsuarioCreateRequest;
@@ -13,6 +14,7 @@ import com.cambiaso.ioc.service.UserAdminService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -25,8 +27,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@ActiveProfiles("test")
+@SpringBootTest(classes = TestApplication.class)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ActiveProfiles({"testcontainers", "test"})
 @Testcontainers
 @Transactional
 class RoleManagementIntegrationTest {
@@ -42,6 +45,10 @@ class RoleManagementIntegrationTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        registry.add("spring.datasource.driverClassName", () -> "org.postgresql.Driver");
+        registry.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.PostgreSQLDialect");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
     }
     @Autowired
     private RoleService roleService;

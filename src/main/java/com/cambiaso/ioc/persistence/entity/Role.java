@@ -10,7 +10,8 @@ import java.time.OffsetDateTime;
 @Data
 @Entity
 @Table(name = "roles")
-public class Role {
+public class
+Role {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

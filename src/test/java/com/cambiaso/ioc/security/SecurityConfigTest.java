@@ -1,12 +1,15 @@
 package com.cambiaso.ioc.security;
 import com.cambiaso.ioc.service.RoleService;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.util.List;
@@ -14,13 +17,25 @@ import java.util.Map;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class SecurityConfigTest {
     @Autowired
     private MockMvc mockMvc;
-    @MockBean
-    private RoleService roleService;
+
+    // Replace deprecated @MockBean by providing a Mockito mock through TestConfiguration
+    static RoleService roleServiceMock = Mockito.mock(RoleService.class);
+
+    @TestConfiguration
+    static class MockServiceConfig {
+        @Bean
+        public RoleService roleService() {
+            return roleServiceMock;
+        }
+    }
+
     @Test
     void shouldAllowAccessWithAdminRole() throws Exception {
         Jwt jwt = Jwt.withTokenValue("mock-token")
