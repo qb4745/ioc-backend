@@ -81,23 +81,69 @@ Diagnóstico y correcciones durante la iteración
 - Implementé la OPCIÓN A, pero en una iteración posterior introduje un StackOverflow debido a crear convertidores y filtros de forma recursiva; se solucionó exponiendo el convertidor como bean singleton y reubicando el filtro para que use ese bean.
 - Reajusté la configuración de tests (`TestSecurityConfig`) para asegurar que el filtro de enriquecimiento se aplique en tests que sustituyan la `SecurityFilterChain`.
 
-Reproducción de tests de seguridad y qué observar
--------------------------------------------------
-Ejecutar solo los tests de seguridad con logging DEBUG para ver el enriquecimiento:
+Depuración específica: `RoleManagementIntegrationTest` (conflicto de beans)
+-----------------------------------------------------------------------
+Resumen rápido
+- Síntoma: `BeanDefinitionOverrideException` durante el arranque del contexto de prueba (mensaje: "Cannot register bean definition with name 'appUserRepository' ... since there is already ... bound").
+- Causa raíz: el test estaba cargando la aplicación principal (`IocbackendApplication`) en lugar de la configuración de pruebas ligera (`TestApplication`). Como `IocbackendApplication` y `TestApplication` escaneaban/registraban los mismos repositorios, Spring intentaba registrar dos veces los mismos beans.
+- Efecto observado: los `@MockBean` que se añadieron (por ejemplo `NotificationService`, `MetabaseEmbeddingService`) no llegaban a aplicarse porque el fallo sucedía en la fase de registro de beans, antes de la inyección de mocks.
 
-```bash
-./mvnw -Dtest=com.cambiaso.ioc.security.SecurityConfigTest test \
-  -Dlogging.level.com.cambiaso.ioc.security=DEBUG \
-  -Dlogging.level.org.springframework.security=DEBUG
-```
+Análisis detallado
+1) ¿Por qué falló ahora y no antes?
+   - Al principio se introdujo `TestApplication` para tener una configuración de pruebas más ligera y controlada. Sin embargo, algunos tests seguían configurados para arrancar `IocbackendApplication` y no `TestApplication`.
+   - Al cargar `IocbackendApplication` (contexto completo) y tener además `TestApplication` visible en el classpath, Spring acababa registrando beans desde ambos orígenes.
 
-Busca en la salida las líneas de debug del filtro de enriquecimiento (ejemplos):
-- `jwtAuthoritiesAugmentor: before=... , claims roles=..., direct roles=...`
-- `jwtAuthoritiesAugmentor: after=... (added=...)` o `jwtAuthoritiesAugmentor: no changes to authorities`
+2) Evidencias que confirmaron la hipótesis
+   - Mensaje explícito de `BeanDefinitionOverrideException` señalando repositorios duplicados (por ejemplo `userRoleRepository` o `appUserRepository`).
+   - Warnings en IntelliJ como "Private field 'metabaseEmbeddingService' is assigned but never accessed": eran secundarios — el mock se declaraba pero Spring no llegaba a inicializar el contexto de test correctamente.
 
-Resultado esperado: cuando el JWT contiene `realm_access.roles: ["ADMIN"]` o `roles: ["ADMIN"]` el convertidor extrae `ROLE_ADMIN` y el endpoint admin devuelve 200.
+Solución aplicada (definitiva)
+1) Asegurar que el test use la configuración de prueba ligera:
+   - Corregir la anotación del test para apuntar a `TestApplication`:
+     ```java
+     @SpringBootTest(
+         classes = TestApplication.class,
+         webEnvironment = SpringBootTest.WebEnvironment.NONE
+     )
+     ```
+   - Esto indica explícitamente a Spring Boot que, para este test, utilice solo la configuración controlada de `TestApplication` y no la aplicación completa.
 
-Si se observa 403, pega la sección de logs que incluya las líneas del filtro y la decisión de autorización (`ExpressionAuthorizationDecision [granted=false, expressionAttribute=hasAuthority('ROLE_ADMIN')]`) y ajustaré el convertidor inmediatamente.
+2) Aislar dependencias irrelevantes con mocks:
+   - Añadimos `@MockBean` en `RoleManagementIntegrationTest` para las dependencias que no queremos cargar en integración ligera:
+     - `NotificationService`
+     - `MetabaseEmbeddingService`
+     - `AppUserSearchRepository` (implementación de búsqueda avanzada de usuarios)
+   - Ejemplo:
+     ```java
+     @MockBean
+     private NotificationService notificationService;
+
+     @MockBean
+     private MetabaseEmbeddingService metabaseEmbeddingService;
+
+     @MockBean
+     private AppUserSearchRepository appUserSearchRepository;
+     ```
+
+3) Otras correcciones menores en los tests
+   - Se añadió `@SuppressWarnings("resource")` en el campo estático del contenedor de Testcontainers para evitar el warning sobre try-with-resources, ya que el lifecycle lo gestiona Testcontainers con `@Container`.
+   - Se validó que la clase de test sea accesible (public) desde el runner de pruebas si la herramienta de ejecución/IDE lo exige.
+
+Resultado final del arreglo del test
+- El test arranca ahora un contexto limitado (solo lo necesario para probar servicios y repositorios relevantes).
+- Las dependencias externas/innecesarias están mockeadas y no impiden el arranque del contexto.
+- Se resolvió el `BeanDefinitionOverrideException` al garantizar que sólo una configuración (la de test) registre los beans en ese contexto concreto.
+
+Cambios aplicados en código de test (resumen)
+- `RoleManagementIntegrationTest`:
+  - `@SpringBootTest(classes = TestApplication.class, webEnvironment = NONE)`
+  - `@ActiveProfiles({"testcontainers", "test"})`, `@Testcontainers`, `@Transactional`
+  - `@MockBean` para `NotificationService`, `MetabaseEmbeddingService`, `AppUserSearchRepository`.
+  - `@Container` + `@SuppressWarnings("resource")` para el `PostgreSQLContainer`.
+
+Notas finales
+- Con estas correcciones los tests de integración orientados a la lógica de negocio (roles/permisos/assignments) pueden ejecutarse de forma fiable y aislada.
+- Si se desea ejecutar una integración completa del sistema (toda la app y todos los módulos), entonces sí hay que arrancar `IocbackendApplication` en pruebas distintas, pero en ese caso hay que aceptar que el contexto es el global y ajustar tests/mocks en consecuencia.
 
 Estado actual — resumen de ejecuciones
 -------------------------------------
