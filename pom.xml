@@ -156,11 +156,13 @@
 			<artifactId>h2</artifactId>
 			<scope>test</scope>
 		</dependency>
-        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-devtools -->
+        <!-- Temporarily disable DevTools to avoid classpath caching -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <version>3.5.5</version>
+            <scope>runtime</scope>
+            <optional>true</optional>  <!-- ADD THIS -->
         </dependency>
 		<dependency>
 			<groupId>org.testcontainers</groupId>

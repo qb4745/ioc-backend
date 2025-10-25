@@ -25,7 +25,7 @@ public class AppUser {
     @Column(name = "supabase_user_id", nullable = false, unique = true)
     private UUID supabaseUserId;
 
-    @Column(name = "email", nullable = false, unique = true, length = 255)
+    @Column(name = "email", nullable = false, unique = true, columnDefinition = "citext")
     private String email;
 
     @Column(name = "primer_nombre", nullable = false)
