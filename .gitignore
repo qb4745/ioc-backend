@@ -62,3 +62,6 @@ Thumbs.db
 
 # Ignore environment-specific properties files
 # /src/main/resources/application-*.properties
+
+# JaCoCo/Surefire Reports
+htmlReport/
