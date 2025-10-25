@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 import static org.mockito.Mockito.mock;
 
@@ -17,6 +18,7 @@ import static org.mockito.Mockito.mock;
  * - Mock de SimpMessagingTemplate (WebSocket)
  * - Mock de NotificationService
  * - MeterRegistry funcional para métricas en tests
+ * - Mock JwtDecoder para evitar llamadas a JWKS en tests
  */
 @TestConfiguration
 public class GlobalTestConfiguration {
@@ -42,4 +44,6 @@ public class GlobalTestConfiguration {
     public MeterRegistry meterRegistry() {
         return new SimpleMeterRegistry();
     }
+
 }
+

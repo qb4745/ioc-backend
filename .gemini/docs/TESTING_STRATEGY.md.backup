@@ -325,7 +325,7 @@ class MyPostgreSQLTest {
 - ✅ Para tests que REALMENTE necesitan PostgreSQL
 
 ---
-
+```markdown
 ### **🐘 PostgreSQL Extensions en Testcontainers**
 
 #### **Problema Común**
@@ -559,7 +559,6 @@ logging.level.org.hibernate.SQL=DEBUG
 - [ ] Usar `AbstractPostgreSQLTest` solo cuando H2 no sea suficiente
 
 ---
-
 ```
 
 ## ❌ **ANTI-PATRONES (QUÉ NO HACER)**

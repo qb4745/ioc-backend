@@ -1,5 +1,6 @@
 package com.cambiaso.ioc.service;
 
+
 import com.cambiaso.ioc.persistence.entity.DimMaquina;
 import com.cambiaso.ioc.persistence.entity.DimMaquinista;
 import com.cambiaso.ioc.persistence.entity.FactProduction;
@@ -46,7 +47,8 @@ class AdvisoryLockSerializationTest {
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("testdb")
             .withUsername("test")
-            .withPassword("test");
+            .withPassword("test")
+            .withInitScript("init-postgresql.sql");
 
     // Configure artificial delay after lock acquisition (before delete) to expose serialization
     @DynamicPropertySource
