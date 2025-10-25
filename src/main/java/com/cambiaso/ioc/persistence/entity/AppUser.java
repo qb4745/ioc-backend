@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Locale;
 import java.util.UUID;
 
 @Data
@@ -24,7 +25,7 @@ public class AppUser {
     @Column(name = "supabase_user_id", nullable = false, unique = true)
     private UUID supabaseUserId;
 
-    @Column(name = "email", nullable = false, unique = true, columnDefinition = "citext")
+    @Column(name = "email", nullable = false, unique = true, length = 255)
     private String email;
 
     @Column(name = "primer_nombre", nullable = false)
@@ -63,4 +64,12 @@ public class AppUser {
 
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeEmail() {
+        if (this.email != null) {
+            this.email = this.email.toLowerCase(Locale.ROOT);
+        }
+    }
 }

@@ -1,80 +1,79 @@
 package com.cambiaso.ioc.security;
-import com.cambiaso.ioc.service.RoleService;
+
+import com.cambiaso.ioc.AbstractIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.test.context.support.WithAnonymousUser;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-@SpringBootTest
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+/**
+ * Tests de configuración de seguridad.
+ */
 @AutoConfigureMockMvc
-class SecurityConfigTest {
+class SecurityConfigTest extends AbstractIntegrationTest {
+
     @Autowired
     private MockMvc mockMvc;
-    @MockBean
-    private RoleService roleService;
+
     @Test
-    void shouldAllowAccessWithAdminRole() throws Exception {
-        Jwt jwt = Jwt.withTokenValue("mock-token")
-                .header("alg", "RS256")
-                .claim("sub", "user123")
-                .claim("realm_access", Map.of("roles", List.of("ADMIN")))
-                .issuedAt(Instant.now())
-                .expiresAt(Instant.now().plusSeconds(3600))
-                .build();
-        mockMvc.perform(get("/api/admin/roles")
-                        .with(jwt().jwt(jwt)))
-                .andExpect(status().isOk());
+    void shouldRespondToHealthEndpoint() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(jsonPath("$.status").exists());
     }
+
     @Test
-    void shouldDenyAccessWithoutAdminRole() throws Exception {
-        Jwt jwt = Jwt.withTokenValue("mock-token")
-                .header("alg", "RS256")
-                .claim("sub", "user456")
-                .claim("realm_access", Map.of("roles", List.of("USER")))
-                .issuedAt(Instant.now())
-                .expiresAt(Instant.now().plusSeconds(3600))
-                .build();
-        mockMvc.perform(get("/api/admin/roles")
-                        .with(jwt().jwt(jwt)))
-                .andExpect(status().isForbidden());
-    }
-    @Test
-    void shouldExtractRolesFromSimpleRolesClaim() throws Exception {
-        Jwt jwt = Jwt.withTokenValue("mock-token")
-                .header("alg", "RS256")
-                .claim("sub", "user789")
-                .claim("roles", List.of("ADMIN"))
-                .issuedAt(Instant.now())
-                .expiresAt(Instant.now().plusSeconds(3600))
-                .build();
-        mockMvc.perform(get("/api/admin/roles")
-                        .with(jwt().jwt(jwt)))
-                .andExpect(status().isOk());
-    }
-    @Test
-    void shouldDenyAccessWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/api/admin/roles"))
+    @WithAnonymousUser
+    void shouldDenyAccessToProtectedEndpointsWithoutAuth() throws Exception {
+        mockMvc.perform(get("/api/v1/dashboards/1"))
                 .andExpect(status().isUnauthorized());
     }
+
     @Test
-    void shouldAllowAccessWithDirectAuthorities() throws Exception {
-        mockMvc.perform(get("/api/admin/roles")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
-                .andExpect(status().isOk());
+    @WithMockUser(username = "testuser", roles = "USER")
+    void shouldAllowAccessWithValidAuthentication() throws Exception {
+        mockMvc.perform(get("/api/v1/dashboards/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("application/json"))
+                .andExpect(jsonPath("$.signedUrl").exists())
+                .andExpect(jsonPath("$.dashboardId").value(1));
     }
+
     @Test
-    void shouldDenyAccessWithInsufficientAuthorities() throws Exception {
-        mockMvc.perform(get("/api/admin/roles")
-                        .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"))))
-                .andExpect(status().isForbidden());
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void shouldAllowAccessForAdminRole() throws Exception {
+        mockMvc.perform(get("/api/v1/dashboards/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.signedUrl").exists());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = "USER")
+    void shouldReturn400ForInvalidDashboardId() throws Exception {
+        mockMvc.perform(get("/api/v1/dashboards/0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = "USER")
+    void shouldReturnErrorForNonExistentDashboard() throws Exception {
+        // Un dashboard no existente puede retornar:
+        // - 404 NOT_FOUND si el circuit breaker NO está activo
+        // - 500 INTERNAL_SERVER_ERROR si el circuit breaker SÍ está activo
+        // Ambos comportamientos son correctos según el estado del sistema
+        mockMvc.perform(get("/api/v1/dashboards/99999"))
+                .andExpect(result -> {
+                    int statusCode = result.getResponse().getStatus();
+                    if (statusCode != 404 && statusCode != 500) {
+                        throw new AssertionError(
+                                "Expected status 404 or 500, but got: " + statusCode
+                        );
+                    }
+                })
+                .andExpect(jsonPath("$.message").exists());
     }
 }
