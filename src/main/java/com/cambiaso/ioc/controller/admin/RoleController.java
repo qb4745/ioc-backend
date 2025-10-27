@@ -14,8 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+
 @RestController
-@RequestMapping("/api/admin/roles")
+@RequestMapping("/api/v1/admin/roles")
 @RequiredArgsConstructor
 public class RoleController {
 
@@ -43,7 +45,9 @@ public class RoleController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<RoleResponse> create(@Valid @RequestBody RoleRequest request) {
         Role created = roleService.create(request);
-        return ResponseEntity.ok(roleMapper.toResponse(created, 0, java.util.Collections.emptyList()));
+        RoleResponse response = roleMapper.toResponse(created, 0, java.util.Collections.emptyList());
+        URI location = URI.create(String.format("/api/v1/admin/roles/%d", response.getId()));
+        return ResponseEntity.created(location).body(response);
     }
 
     @PutMapping("/{id}")

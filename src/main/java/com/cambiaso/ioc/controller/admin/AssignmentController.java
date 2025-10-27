@@ -7,7 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/admin/assignments")
+@RequestMapping("/api/v1/admin/assignments")
 @RequiredArgsConstructor
 public class AssignmentController {
 

@@ -14,10 +14,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/users")
+@RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 public class AdminUserController {
 
@@ -48,7 +49,8 @@ public class AdminUserController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<UsuarioResponse> create(@Valid @RequestBody UsuarioCreateRequest req) {
         UsuarioResponse created = userAdminService.create(req);
-        return ResponseEntity.ok(created);
+        URI location = URI.create(String.format("/api/v1/admin/users/%d", created.getId()));
+        return ResponseEntity.created(location).body(created);
     }
 
     @PutMapping("/{id}")

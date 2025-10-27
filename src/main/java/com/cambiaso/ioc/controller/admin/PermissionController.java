@@ -15,10 +15,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/permissions")
+@RequestMapping("/api/v1/admin/permissions")
 @RequiredArgsConstructor
 public class PermissionController {
 
@@ -50,7 +51,9 @@ public class PermissionController {
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<PermissionResponse> create(@Valid @RequestBody PermissionRequest request) {
         Permission created = permissionService.create(request);
-        return ResponseEntity.ok(permissionMapper.toResponse(created));
+        PermissionResponse response = permissionMapper.toResponse(created);
+        URI location = URI.create(String.format("/api/v1/admin/permissions/%d", response.getId()));
+        return ResponseEntity.created(location).body(response);
     }
 
     @PutMapping("/{id}")
