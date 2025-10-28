@@ -1,3 +1,5 @@
+<!-- BLOCK:BLOCK:001:START -->
+<!-- BLOCK_META: {"id":"BLOCK:001","type":"text","title":"TailAdmin - Configuración de Diseño","lines":7,"hash":"4f5a4440","created":"2025-10-27T16:08:40.080Z"} -->
 # TailAdmin - Configuración de Diseño
 > Documentación auto-generada desde el proyecto
 > Fecha: 27-10-2025
@@ -5,11 +7,19 @@
 
 Este documento detalla los tokens de diseño, componentes base y patrones de uso extraídos del proyecto TailAdmin. Sirve como una referencia centralizada para mantener la consistencia visual y estructural en todo el desarrollo.
 
+<!-- BLOCK:BLOCK:001:END -->
+
+<!-- BLOCK:BLOCK:002:START -->
+<!-- BLOCK_META: {"id":"BLOCK:002","type":"section","title":"📋 Metadatos","lines":5,"hash":"602ee0f5","created":"2025-10-27T16:08:40.080Z"} -->
 ## 📋 Metadatos
 - **Ruta del proyecto:** `/mnt/ssd-480/repos/captone/tailadmin-free-tailwind-dashboard-template`
 - **Framework detectado:** HTML, AlpineJS
 - **Versión Tailwind:** 4.0.0
 
+<!-- BLOCK:BLOCK:002:END -->
+
+<!-- BLOCK:BLOCK:003:START -->
+<!-- BLOCK_META: {"id":"BLOCK:003","type":"code","title":"🎨 Tokens de Diseño","lines":131,"hash":"620de0e8","created":"2025-10-27T16:08:40.081Z"} -->
 ---
 
 ## 🎨 Tokens de Diseño
@@ -141,6 +151,10 @@ colors: {
 }
 ```
 
+<!-- BLOCK:BLOCK:003:END -->
+
+<!-- BLOCK:BLOCK:004:START -->
+<!-- BLOCK_META: {"id":"BLOCK:004","type":"code","title":"Tipografía","lines":22,"hash":"57c08532","created":"2025-10-27T16:08:40.081Z"} -->
 ### Tipografía
 
 ```javascript
@@ -163,14 +177,13 @@ fontSize: {
 }
 ```
 
-### Espaciado y Bordes
+<!-- BLOCK:BLOCK:004:END -->
 
-```javascript
-// No se encontraron configuraciones personalizadas para espaciado (spacing) 
-// o radio de borde (borderRadius). El proyecto utiliza los valores por 
-// defecto de Tailwind CSS.
-```
+<!-- BLOCK:BLOCK:005:START -->`
+3. Reemplaza el contenido hasta `<!-- BLOCK:BLOCK:005:END -->
 
+<!-- BLOCK:BLOCK:006:START -->
+<!-- BLOCK_META: {"id":"BLOCK:006","type":"code","title":"Sombras (Shadows)","lines":21,"hash":"3d6fb9f1","created":"2025-10-27T16:08:40.081Z"} -->
 ### Sombras (Shadows)
 
 ```javascript
@@ -192,6 +205,10 @@ dropShadow: {
 }
 ```
 
+<!-- BLOCK:BLOCK:006:END -->
+
+<!-- BLOCK:BLOCK:007:START -->
+<!-- BLOCK_META: {"id":"BLOCK:007","type":"code","title":"Puntos de Ruptura (Breakpoints)","lines":15,"hash":"9f36430f","created":"2025-10-27T16:08:40.081Z"} -->
 ### Puntos de Ruptura (Breakpoints)
 
 ```javascript
@@ -207,6 +224,10 @@ screens: {
   '3xl': '2000px',
 }
 ```
+<!-- BLOCK:BLOCK:007:END -->
+
+<!-- BLOCK:BLOCK:008:START -->
+<!-- BLOCK_META: {"id":"BLOCK:008","type":"code","title":"🧩 Componentes Base Encontrados","lines":17,"hash":"df8a1bd2","created":"2025-10-27T16:08:40.081Z"} -->
 ---
 ## 🧩 Componentes Base Encontrados
 
@@ -224,6 +245,10 @@ screens: {
 </button>
 ```
 
+<!-- BLOCK:BLOCK:008:END -->
+
+<!-- BLOCK:BLOCK:009:START -->
+<!-- BLOCK_META: {"id":"BLOCK:009","type":"code","title":"Formularios","lines":10,"hash":"5b035d32","created":"2025-10-27T16:08:40.081Z"} -->
 ### Formularios
 
 ```html
@@ -234,6 +259,10 @@ screens: {
 <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400" />
 ```
 
+<!-- BLOCK:BLOCK:009:END -->
+
+<!-- BLOCK:BLOCK:010:START -->
+<!-- BLOCK_META: {"id":"BLOCK:010","type":"code","title":"Tarjetas (Cards)","lines":14,"hash":"c2445ae2","created":"2025-10-27T16:08:40.081Z"} -->
 ### Tarjetas (Cards)
 
 ```html
@@ -248,6 +277,10 @@ screens: {
   </div>
 </div>
 ```
+<!-- BLOCK:BLOCK:010:END -->
+
+<!-- BLOCK:BLOCK:011:START -->
+<!-- BLOCK_META: {"id":"BLOCK:011","type":"code","title":"🔌 Plugins Detectados","lines":9,"hash":"8dfcf4dc","created":"2025-10-27T16:08:40.081Z"} -->
 ---
 ## 🔌 Plugins Detectados
 
@@ -257,6 +290,10 @@ plugins: [
   "@tailwindcss/forms"
 ]
 ```
+<!-- BLOCK:BLOCK:011:END -->
+
+<!-- BLOCK:BLOCK:012:START -->
+<!-- BLOCK_META: {"id":"BLOCK:012","type":"text","title":"📊 Análisis de Uso","lines":11,"hash":"7cd5a277","created":"2025-10-27T16:08:40.081Z"} -->
 ---
 ## 📊 Análisis de Uso
 
@@ -268,6 +305,10 @@ plugins: [
 - **Bordes y Fondos:** `rounded-lg`, `border`, `border-gray-200`, `dark:border-gray-800`, `bg-white`, `dark:bg-white/[0.03]` definen la mayoría de los contenedores.
 - **Espaciado:** `p-4`, `sm:p-6`, `py-2.5`, `px-4` son patrones de padding recurrentes.
 
+<!-- BLOCK:BLOCK:012:END -->
+
+<!-- BLOCK:BLOCK:013:START -->
+<!-- BLOCK_META: {"id":"BLOCK:013","type":"code","title":"🔍 Clases Personalizadas Detectadas","lines":22,"hash":"44fdefcd","created":"2025-10-27T16:08:40.081Z"} -->
 ---
 ## 🔍 Clases Personalizadas Detectadas
 
@@ -290,17 +331,61 @@ plugins: [
   /* Estiliza la barra de scroll */
 }
 ```
+<!-- BLOCK:BLOCK:013:END -->
+
+<!-- BLOCK:BLOCK:014:START -->
+<!-- BLOCK_META: {"id":"BLOCK:014","type":"text","title":"⚠️ Inconsistencias Detectadas","lines":6,"hash":"dad4c511","created":"2025-10-27T16:08:40.081Z"} -->
 ---
 ## ⚠️ Inconsistencias Detectadas
 
 - Uso mixto de diferentes tonos de `gray` para textos con propósitos similares.
 - Ligeras variaciones en `padding` y `font-size` para botones que deberían ser idénticos.
 
+<!-- BLOCK:BLOCK:014:END -->
+
+<!-- BLOCK:BLOCK:015:START -->
+<!-- BLOCK_META: {"id":"BLOCK:015","type":"text","title":"📝 Notas Adicionales","lines":6,"hash":"2cea498f","created":"2025-10-27T16:08:40.081Z"} -->
 ---
 ## 📝 Notas Adicionales
 
 - El proyecto demuestra un uso avanzado de **Tailwind CSS v4**, moviendo la configuración al bloque `@theme` en el CSS principal, lo cual es una desviación importante de la v3.
 - **Alpine.js** se utiliza para gestionar el estado de la UI, como los toggles de menú y modo oscuro. Las clases de Tailwind a menudo se aplican condicionalmente usando la sintaxis `:class` de Alpine.
 
+<!-- BLOCK:BLOCK:015:END -->
+
+<!-- BLOCK:BLOCK:016:START -->
+<!-- BLOCK_META: {"id":"BLOCK:016","type":"text","title":"","lines":2,"hash":"918f10e3","created":"2025-10-27T16:08:40.081Z"} -->
 ---
 *Archivo generado automáticamente - No editar manualmente*
+<!-- BLOCK:BLOCK:016:END -->
+
+---
+
+---
+
+## 📑 ÍNDICE DE BLOQUES (Auto-generado)
+
+| ID        | Tipo    | Título                              | Líneas | Hash     |
+| --------- | ------- | ----------------------------------- | ------ | -------- |
+| BLOCK:001 | text    | TailAdmin - Configuración de Diseño | 7      | 4f5a4440 |
+| BLOCK:002 | section | 📋 Metadatos                        | 5      | 602ee0f5 |
+| BLOCK:003 | code    | 🎨 Tokens de Diseño                 | 131    | 620de0e8 |
+| BLOCK:004 | code    | Tipografía                          | 22     | 57c08532 |
+|           |         |                                     |        |          |
+| BLOCK:006 | code    | Sombras (Shadows)                   | 21     | 3d6fb9f1 |
+| BLOCK:007 | code    | Puntos de Ruptura (Breakpoints)     | 15     | 9f36430f |
+| BLOCK:008 | code    | 🧩 Componentes Base Encontrados     | 17     | df8a1bd2 |
+| BLOCK:009 | code    | Formularios                         | 10     | 5b035d32 |
+| BLOCK:010 | code    | Tarjetas (Cards)                    | 14     | c2445ae2 |
+| BLOCK:011 | code    | 🔌 Plugins Detectados               | 9      | 8dfcf4dc |
+| BLOCK:012 | text    | 📊 Análisis de Uso                  | 11     | 7cd5a277 |
+| BLOCK:013 | code    | 🔍 Clases Personalizadas Detectadas | 22     | 44fdefcd |
+| BLOCK:014 | text    | ⚠️ Inconsistencias Detectadas       | 6      | dad4c511 |
+| BLOCK:015 | text    | 📝 Notas Adicionales                | 6      | 2cea498f |
+| BLOCK:016 | text    |                                     | 2      | 918f10e3 |
+
+**Total de bloques:** 16
+**Total de líneas:** NaN
+**Promedio líneas/bloque:** NaN
+
+*Última actualización: 27-10-2025, 1:23:48 p. m.*
