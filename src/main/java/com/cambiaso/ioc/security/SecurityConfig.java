@@ -48,8 +48,14 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 // Define authorization rules for endpoints
                 .authorizeHttpRequests(authorize -> authorize
-                        // Allow unauthenticated access to public endpoints if any (e.g., actuator health)
-                        .requestMatchers("/public/**", "/actuator/health").permitAll()
+                        // Allow unauthenticated access to public endpoints and API docs
+                        .requestMatchers(
+                            "/public/**", 
+                            "/actuator/health",
+                            "/v3/api-docs/**",
+                            "/swagger-ui.html",
+                            "/swagger-ui/**"
+                        ).permitAll()
                         // Require authentication for all other requests
                         .anyRequest().authenticated()
                 )
