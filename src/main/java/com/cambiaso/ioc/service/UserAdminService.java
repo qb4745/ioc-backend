@@ -12,6 +12,7 @@ import com.cambiaso.ioc.persistence.repository.AppUserSearchRepository;
 import com.cambiaso.ioc.persistence.repository.PlantaRepository;
 import com.cambiaso.ioc.persistence.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class UserAdminService {
 
     private final AppUserRepository appUserRepository;
@@ -31,6 +33,7 @@ public class UserAdminService {
     private final PlantaRepository plantaRepository;
     private final UserRoleRepository userRoleRepository;
     private final UsuarioMapper usuarioMapper;
+    private final SupabaseAuthService supabaseAuthService;
 
     @Transactional(readOnly = true)
     public Page<com.cambiaso.ioc.dto.response.UsuarioResponse> search(String search, Integer plantaId, Boolean isActive, Pageable pageable) {
@@ -47,15 +50,40 @@ public class UserAdminService {
 
     public com.cambiaso.ioc.dto.response.UsuarioResponse create(UsuarioCreateRequest req) {
         String email = req.getEmail().trim();
-        UUID supabaseId = req.getSupabaseUserId();
 
+        // Validar que el email no exista
         if (appUserRepository.existsByEmailIgnoreCase(email)) {
             throw new ResourceConflictException("Email already exists: " + email);
         }
-        if (supabaseId != null && appUserRepository.existsBySupabaseUserId(supabaseId)) {
-            throw new ResourceConflictException("Supabase user id already exists: " + supabaseId);
+
+        UUID supabaseId;
+        boolean createdInSupabase = false;
+
+        // NUEVO FLUJO: Si viene password, crear en Supabase automáticamente
+        if (req.getPassword() != null && !req.getPassword().isBlank()) {
+            log.info("Creating user in Supabase with password for email: {}", email);
+            try {
+                supabaseId = supabaseAuthService.createSupabaseUser(email, req.getPassword());
+                createdInSupabase = true;
+            } catch (Exception e) {
+                log.error("Failed to create Supabase account for email: {}", email, e);
+                throw new RuntimeException("Failed to create Supabase account: " + e.getMessage(), e);
+            }
+        }
+        // FLUJO LEGACY: Si viene supabaseUserId, usarlo (deprecado)
+        else if (req.getSupabaseUserId() != null) {
+            log.warn("Using deprecated supabaseUserId field for user creation: {}", email);
+            supabaseId = req.getSupabaseUserId();
+            if (appUserRepository.existsBySupabaseUserId(supabaseId)) {
+                throw new ResourceConflictException("Supabase user id already exists: " + supabaseId);
+            }
+        }
+        // ERROR: Debe venir uno de los dos
+        else {
+            throw new IllegalArgumentException("Either password or supabaseUserId must be provided");
         }
 
+        // Crear usuario en la BD
         AppUser u = new AppUser();
         u.setEmail(email);
         u.setSupabaseUserId(supabaseId);
@@ -74,8 +102,23 @@ public class UserAdminService {
             u.setPlanta(p);
         }
 
-        AppUser saved = appUserRepository.save(u);
-        return usuarioMapper.toResponse(saved, List.of());
+        try {
+            AppUser saved = appUserRepository.save(u);
+            log.info("Successfully created user in database with ID: {}", saved.getId());
+            return usuarioMapper.toResponse(saved, List.of());
+        } catch (Exception e) {
+            log.error("Failed to save user to database, rolling back", e);
+            // Rollback: eliminar usuario de Supabase si falló la BD y lo creamos nosotros
+            if (createdInSupabase) {
+                try {
+                    supabaseAuthService.deleteSupabaseUser(supabaseId);
+                    log.info("Successfully rolled back Supabase user creation");
+                } catch (Exception rollbackError) {
+                    log.error("Failed to rollback Supabase user creation for ID: {}", supabaseId, rollbackError);
+                }
+            }
+            throw e;
+        }
     }
 
     public com.cambiaso.ioc.dto.response.UsuarioResponse update(Long id, UsuarioUpdateRequest req) {
@@ -111,4 +154,3 @@ public class UserAdminService {
         appUserRepository.save(u);
     }
 }
-

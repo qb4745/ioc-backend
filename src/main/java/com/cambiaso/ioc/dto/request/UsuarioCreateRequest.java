@@ -18,7 +18,12 @@ public class UsuarioCreateRequest {
     @UniqueEmail
     private String email;
 
-    @NotNull
+    // NEW: Password field for automatic Supabase user creation
+    @Size(min = 6, message = "Password must be at least 6 characters")
+    private String password;
+
+    // DEPRECATED: Kept for backward compatibility during migration
+    @Deprecated
     @ValidSupabaseUUID
     private UUID supabaseUserId;
 
@@ -43,6 +48,9 @@ public class UsuarioCreateRequest {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
     public UUID getSupabaseUserId() { return supabaseUserId; }
     public void setSupabaseUserId(UUID supabaseUserId) { this.supabaseUserId = supabaseUserId; }
