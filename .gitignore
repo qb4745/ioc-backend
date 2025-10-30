@@ -65,3 +65,4 @@ Thumbs.db
 
 # JaCoCo/Surefire Reports
 htmlReport/
+*.sh
