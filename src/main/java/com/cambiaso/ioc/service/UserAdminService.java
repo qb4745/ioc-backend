@@ -7,9 +7,13 @@ import com.cambiaso.ioc.exception.ResourceNotFoundException;
 import com.cambiaso.ioc.mapper.UsuarioMapper;
 import com.cambiaso.ioc.persistence.entity.AppUser;
 import com.cambiaso.ioc.persistence.entity.Planta;
+import com.cambiaso.ioc.persistence.entity.Role;
+import com.cambiaso.ioc.persistence.entity.UserRole;
+import com.cambiaso.ioc.persistence.entity.UserRoleKey;
 import com.cambiaso.ioc.persistence.repository.AppUserRepository;
 import com.cambiaso.ioc.persistence.repository.AppUserSearchRepository;
 import com.cambiaso.ioc.persistence.repository.PlantaRepository;
+import com.cambiaso.ioc.persistence.repository.RoleRepository;
 import com.cambiaso.ioc.persistence.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +36,7 @@ public class UserAdminService {
     private final AppUserSearchRepository appUserSearchRepository;
     private final PlantaRepository plantaRepository;
     private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
     private final UsuarioMapper usuarioMapper;
     private final SupabaseAuthService supabaseAuthService;
 
@@ -105,7 +110,35 @@ public class UserAdminService {
         try {
             AppUser saved = appUserRepository.save(u);
             log.info("Successfully created user in database with ID: {}", saved.getId());
-            return usuarioMapper.toResponse(saved, List.of());
+
+            // 🔥 NUEVO: Asignar roles automáticamente desde el request
+            if (req.getRoles() != null && !req.getRoles().isEmpty()) {
+                for (String roleName : req.getRoles()) {
+                    Role role = roleRepository.findByNameIgnoreCase(roleName)
+                            .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + roleName));
+
+                    // Verificar si ya existe (idempotente)
+                    boolean exists = userRoleRepository.existsByIdUserIdAndIdRoleId(saved.getId(), role.getId());
+                    if (!exists) {
+                        UserRole userRole = new UserRole();
+                        UserRoleKey key = new UserRoleKey();
+                        key.setUserId(saved.getId());
+                        key.setRoleId(role.getId());
+                        userRole.setId(key);
+                        userRole.setUser(saved);
+                        userRole.setRole(role);
+                        userRole.setAssignedAt(OffsetDateTime.now());
+                        // assigned_by_user_id queda NULL (creación automática del sistema)
+
+                        userRoleRepository.save(userRole);
+                        log.info("Assigned role '{}' to user ID {}", roleName, saved.getId());
+                    }
+                }
+            }
+
+            // Obtener los roles finales asignados para la respuesta
+            List<String> assignedRoles = userRoleRepository.findRoleNamesByUserId(saved.getId());
+            return usuarioMapper.toResponse(saved, assignedRoles);
         } catch (Exception e) {
             log.error("Failed to save user to database, rolling back", e);
             // Rollback: eliminar usuario de Supabase si falló la BD y lo creamos nosotros

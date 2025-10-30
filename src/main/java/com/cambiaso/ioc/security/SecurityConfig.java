@@ -1,5 +1,8 @@
 package com.cambiaso.ioc.security;
 
+import com.cambiaso.ioc.persistence.repository.AppUserRepository;
+import com.cambiaso.ioc.persistence.repository.UserRoleRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,6 +39,12 @@ public class SecurityConfig {
 
     @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
     private String issuerUri;
+
+    @Autowired
+    private AppUserRepository appUserRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -139,7 +148,26 @@ public class SecurityConfig {
                         .collect(Collectors.toList()));
             }
 
-            // 3) Also include scope-based authorities (default converter) to support scopes
+            // 🔥 3) NUEVO: Enriquecer desde PostgreSQL (SOLUCIÓN PARA FREE TIER)
+            String supabaseUserIdStr = jwt.getSubject(); // "sub" del JWT
+            if (supabaseUserIdStr != null) {
+                try {
+                    java.util.UUID supabaseUserId = java.util.UUID.fromString(supabaseUserIdStr);
+
+                    // Buscar usuario en la BD local
+                    appUserRepository.findBySupabaseUserId(supabaseUserId).ifPresent(appUser -> {
+                        // Obtener roles desde user_roles
+                        List<String> dbRoles = userRoleRepository.findRoleNamesByUserId(appUser.getId());
+                        dbRoles.forEach(roleName ->
+                            authorities.add(new SimpleGrantedAuthority("ROLE_" + roleName.toUpperCase()))
+                        );
+                    });
+                } catch (IllegalArgumentException e) {
+                    // UUID inválido, ignorar
+                }
+            }
+
+            // 4) Also include scope-based authorities (default converter) to support scopes
             JwtGrantedAuthoritiesConverter scopesConverter = new JwtGrantedAuthoritiesConverter();
             Collection<GrantedAuthority> scopeAuthorities = scopesConverter.convert(jwt);
             if (scopeAuthorities != null) authorities.addAll(scopeAuthorities);
