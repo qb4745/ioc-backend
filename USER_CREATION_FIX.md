@@ -16,7 +16,10 @@
 ## Cambios Implementados
 
 ### 1. Dependencias Agregadas
-- **WebFlux** (`spring-boot-starter-webflux`): Para hacer llamadas HTTP a la API de Supabase
+- **spring-webflux** (solo la librería, sin el starter completo): Para usar `WebClient`
+- **reactor-netty**: Cliente HTTP reactivo necesario para `WebClient`
+
+**NOTA IMPORTANTE**: No usamos `spring-boot-starter-webflux` completo porque causaría conflictos con Spring MVC. Solo agregamos las dependencias mínimas necesarias para `WebClient`.
 
 ### 2. Nuevos Archivos Creados
 
@@ -153,4 +156,3 @@ export SUPABASE_URL="https://bdyvzjpkycnekjrlqlfp.supabase.co"
 - El password es temporal - el usuario debería cambiarlo en su primer login
 - El Service Role Key bypasea RLS (Row Level Security) - úsalo solo en el backend
 - WebFlux se agregó solo para WebClient (no convierte la app a reactiva)
-

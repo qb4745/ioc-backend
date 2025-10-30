@@ -42,6 +42,8 @@ class UserAdminServiceTest {
     private UserRoleRepository userRoleRepository;
     @Mock
     private UsuarioMapper usuarioMapper;
+    @Mock
+    private SupabaseAuthService supabaseAuthService;  // ← ADDED: Mock del nuevo servicio
 
     @InjectMocks
     private UserAdminService userAdminService;
@@ -51,10 +53,42 @@ class UserAdminServiceTest {
     }
 
     @Test
-    void create_success() {
+    void create_success_withPassword() {
+        // ✅ NUEVO FLUJO: Con password (crea usuario en Supabase automáticamente)
         UsuarioCreateRequest req = new UsuarioCreateRequest();
         req.setEmail("test@example.com");
-        req.setSupabaseUserId(UUID.randomUUID());
+        req.setPassword("temporal123");  // ← UPDATED: Usar password en lugar de supabaseUserId
+        req.setPrimerNombre("John");
+        req.setPrimerApellido("Doe");
+
+        UUID generatedSupabaseId = UUID.randomUUID();
+
+        when(appUserRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
+        when(supabaseAuthService.createSupabaseUser("test@example.com", "temporal123"))
+            .thenReturn(generatedSupabaseId);  // ← Mock Supabase creando usuario
+
+        AppUser saved = new AppUser();
+        saved.setId(42L);
+        when(appUserRepository.save(any(AppUser.class))).thenReturn(saved);
+
+        UsuarioResponse resp = new UsuarioResponse();
+        resp.setId(42);
+        when(usuarioMapper.toResponse(any(AppUser.class), anyList())).thenReturn(resp);
+
+        UsuarioResponse result = userAdminService.create(req);
+
+        assertNotNull(result);
+        assertEquals(42, result.getId());
+        verify(supabaseAuthService).createSupabaseUser("test@example.com", "temporal123");
+        verify(appUserRepository).save(any(AppUser.class));
+    }
+
+    @Test
+    void create_success_withSupabaseUserId_deprecated() {
+        // ✅ FLUJO LEGACY: Con supabaseUserId (deprecated pero aún funciona)
+        UsuarioCreateRequest req = new UsuarioCreateRequest();
+        req.setEmail("test@example.com");
+        req.setSupabaseUserId(UUID.randomUUID());  // ← Deprecated pero soportado
         req.setPrimerNombre("John");
         req.setPrimerApellido("Doe");
 
@@ -70,17 +104,62 @@ class UserAdminServiceTest {
         when(usuarioMapper.toResponse(any(AppUser.class), anyList())).thenReturn(resp);
 
         UsuarioResponse result = userAdminService.create(req);
+
         assertNotNull(result);
         assertEquals(42, result.getId());
         verify(appUserRepository).save(any(AppUser.class));
+        verifyNoInteractions(supabaseAuthService);  // No llama a Supabase en flujo legacy
+    }
+
+    @Test
+    void create_rollback_whenDatabaseFails() {
+        // ✅ TEST DE ROLLBACK: Si falla la BD, elimina el usuario de Supabase
+        UsuarioCreateRequest req = new UsuarioCreateRequest();
+        req.setEmail("test@example.com");
+        req.setPassword("temporal123");
+        req.setPrimerNombre("John");
+        req.setPrimerApellido("Doe");
+
+        UUID generatedSupabaseId = UUID.randomUUID();
+
+        when(appUserRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
+        when(supabaseAuthService.createSupabaseUser("test@example.com", "temporal123"))
+            .thenReturn(generatedSupabaseId);
+        when(appUserRepository.save(any(AppUser.class)))
+            .thenThrow(new RuntimeException("Database error"));
+
+        assertThrows(RuntimeException.class, () -> userAdminService.create(req));
+
+        // Verifica que intentó hacer rollback en Supabase
+        verify(supabaseAuthService).deleteSupabaseUser(generatedSupabaseId);
     }
 
     @Test
     void create_conflict_email() {
         UsuarioCreateRequest req = new UsuarioCreateRequest();
         req.setEmail("a@b.com");
+        req.setPassword("password123");
+
         when(appUserRepository.existsByEmailIgnoreCase("a@b.com")).thenReturn(true);
+
         assertThrows(ResourceConflictException.class, () -> userAdminService.create(req));
+
+        // No debe llamar a Supabase si el email ya existe
+        verifyNoInteractions(supabaseAuthService);
+    }
+
+    @Test
+    void create_throwsException_whenNeitherPasswordNorSupabaseIdProvided() {
+        // ✅ TEST: Debe fallar si no viene ni password ni supabaseUserId
+        UsuarioCreateRequest req = new UsuarioCreateRequest();
+        req.setEmail("test@example.com");
+        req.setPrimerNombre("John");
+        req.setPrimerApellido("Doe");
+        // Sin password ni supabaseUserId
+
+        when(appUserRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> userAdminService.create(req));
     }
 
     @Test
