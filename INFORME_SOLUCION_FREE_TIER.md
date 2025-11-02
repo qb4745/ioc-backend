@@ -26,7 +26,7 @@
 
 Se agregó el paso 3 en `jwtGrantedAuthoritiesConverter()`:
 
-```java
+```text
 // 🔥 3) NUEVO: Enriquecer desde PostgreSQL (SOLUCIÓN PARA FREE TIER)
 String supabaseUserIdStr = jwt.getSubject(); // "sub" del JWT
 if (supabaseUserIdStr != null) {
@@ -246,6 +246,75 @@ void testWithMockJwt() {
 
 ---
 
+## 🔔 **CAMBIOS RECIENTES (IMPLEMENTACIÓN AUTOMÁTICA DE ROLES Y OPENAPI)**
+
+He realizado cambios adicionales después del informe inicial para que la creación de usuarios desde la API (o Swagger) asigne roles automáticamente cuando el request incluye `roles`.
+
+### **Qué se cambió exactamente**
+
+- **`UserAdminService.create(...)`**
+  - Ahora, tras guardar el `AppUser` en la tabla `app_users`, el método procesa `req.getRoles()` y para cada nombre de rol:
+    - Busca el `Role` con `RoleRepository.findByNameIgnoreCase(roleName)` (lanza `ResourceNotFoundException` si no existe).
+    - Verifica idempotencia con `userRoleRepository.existsByIdUserIdAndIdRoleId(userId, roleId)`.
+    - Crea la entidad `UserRole` con su `UserRoleKey` (PK compuesta) y setea `assignedAt = OffsetDateTime.now()`.
+    - Guarda la asociación con `userRoleRepository.save(userRole)`.
+  - Al final retorna la respuesta con la lista de roles efectivamente asignados (consulta `userRoleRepository.findRoleNamesByUserId(saved.getId())`).
+  - En rollback por error se mantiene la lógica anterior: si el usuario fue creado en Supabase y falla la persistencia local, se intenta borrar el usuario en Supabase.
+
+- **Inyección de dependencias:** `RoleRepository` fue añadido como dependencia final en `UserAdminService`.
+
+- **Comportamiento importante:**
+  - La asignación es idempotente: si la asociación ya existe no se inserta de nuevo.
+  - `assigned_by_user_id` queda `NULL` cuando la asignación la realiza el sistema durante la creación del usuario.
+  - Si prefieres que `assigned_by_user_id` sea el admin que realizó la llamada, se puede adaptar para recibir ese id y setearlo.
+
+- **`OpenApiConfig.java`** (nuevo/actualizado)
+  - Añadí la definición global de `SecurityRequirement(name = "bearerAuth")` y `@SecurityScheme` para JWT Bearer.
+  - Esto hace que Swagger UI muestre el botón "Authorize" para pegar `Bearer <token>` y probar endpoints protegidos.
+
+- **`SecurityConfig.java`** (recordatorio)
+  - Ya se agregó el enriquecimiento de authorities consultando la BD por `supabase_user_id` (jwt.sub) y mapeando a `ROLE_<NAME>`.
+
+### **Pruebas recomendadas (rápidas)**
+
+1. **Reinicia la aplicación para cargar los cambios:**
+
+```bash
+./mvnw -q spring-boot:run
+```
+
+2. **Autoriza Swagger:** abre `http://localhost:8080/swagger-ui/index.html`, haz click en `Authorize` y pega `Bearer <TOKEN>` (si no ves Authorize revisa `/v3/api-docs`).
+
+3. **Crear usuario con roles desde Swagger (ejemplo):**
+
+```json
+{
+  "email": "admin10@example.com",
+  "password": "pass123",
+  "primerNombre": "paquito",
+  "primerApellido": "eulalio",
+  "plantaId": 1,
+  "roles": ["ANALISTA"]
+}
+```
+
+4. **Verifica en la BD que la fila en `user_roles` existe:**
+
+```sql
+SELECT u.id, u.email, r.name, ur.assigned_at
+FROM app_users u
+JOIN user_roles ur ON ur.user_id = u.id
+JOIN roles r ON r.id = ur.role_id
+WHERE u.email = 'admin10@example.com';
+```
+
+### **Notas finales**
+
+- Estos cambios ya se aplicaron en el código fuente (`UserAdminService`, `OpenApiConfig`, `SecurityConfig`). El cambio es transaccional y idempotente.
+- Si prefieres que la asignación de roles la haga exclusivamente `AssignmentService` (delegar en vez de duplicar lógica), puedo simplificar `UserAdminService` para llamar a `assignmentService.assignRoleToUser(...)` en lugar de crear `UserRole` directamente.
+
+---
+
 ## ✅ **RESUMEN**
 
 **Estado:** La solución está implementada y lista para usar.
@@ -268,4 +337,3 @@ void testWithMockJwt() {
 ```properties
 logging.level.org.springframework.security=DEBUG
 ```
-

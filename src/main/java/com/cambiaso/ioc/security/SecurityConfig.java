@@ -40,6 +40,9 @@ public class SecurityConfig {
     @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
     private String issuerUri;
 
+    @Value("${app.cors.allowed-origins:}")
+    private String appCorsAllowedOrigins; // comma-separated patterns, optional
+
     @Autowired
     private AppUserRepository appUserRepository;
 
@@ -89,15 +92,24 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Specify allowed origins (e.g., your frontend application's URL)
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "https://ioc-frontend-git-chore-configmetabase-a-8166e5-qb4745s-projects.vercel.app"
-        ));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
-        configuration.setExposedHeaders(List.of("Retry-After", "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset"));
+
+        // Build origin patterns from property if provided; otherwise use safe defaults.
+        List<String> originPatterns;
+        if (appCorsAllowedOrigins != null && !appCorsAllowedOrigins.isBlank()) {
+            originPatterns = List.of(appCorsAllowedOrigins.split("\s*,\s*"));
+        } else {
+            originPatterns = List.of(
+                    "http://localhost:3000",
+                    "http://localhost:5173",
+                    "https://*.vercel.app"
+            );
+        }
+
+        // Use allowedOriginPatterns to accept wildcard preview domains (e.g. *.vercel.app)
+        configuration.setAllowedOriginPatterns(originPatterns);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Retry-After", "RateLimit-Limit", "RateLimit-Remaining", "RateLimit-Reset", "Authorization"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
