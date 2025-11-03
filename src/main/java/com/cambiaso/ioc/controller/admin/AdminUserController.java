@@ -4,6 +4,7 @@ import com.cambiaso.ioc.dto.request.UsuarioCreateRequest;
 import com.cambiaso.ioc.dto.request.UsuarioUpdateRequest;
 import com.cambiaso.ioc.dto.response.UsuarioResponse;
 import com.cambiaso.ioc.service.UserAdminService;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,10 @@ public class AdminUserController {
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "plantaId", required = false) Integer plantaId,
             @RequestParam(value = "isActive", required = false) Boolean isActive,
+            @Parameter(
+                    description = "Paginación y ordenamiento. Ejemplos: sort=email,asc o sort=createdAt,desc",
+                    example = "email,asc"
+            )
             Pageable pageable) {
         Pageable effective = clamp(pageable);
         Page<com.cambiaso.ioc.dto.response.UsuarioResponse> page = userAdminService.search(search, plantaId, isActive, effective);
@@ -73,4 +78,3 @@ public class AdminUserController {
         return PageRequest.of(page, size, pageable.getSort());
     }
 }
-
