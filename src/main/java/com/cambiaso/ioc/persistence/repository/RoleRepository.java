@@ -9,14 +9,17 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 
+@SuppressWarnings("SqlNoDataSourceInspection")
 public interface RoleRepository extends JpaRepository<Role, Integer> {
     Optional<Role> findByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCase(String name);
 
-    @Query(value = "SELECT * FROM roles r WHERE :search::text IS NULL OR :search = '' OR LOWER(r.name) LIKE LOWER(CONCAT('%', :search::text, '%'))",
-           countQuery = "SELECT COUNT(*) FROM roles r WHERE :search::text IS NULL OR :search = '' OR LOWER(r.name) LIKE LOWER(CONCAT('%', :search::text, '%'))",
+    // IntelliJ sometimes warns "No data sources are configured to run this SQL" for
+    // native queries. Add both inline inspection suppression and @SuppressWarnings to silence the inspection.
+    //noinspection SqlNoDataSourceInspection
+    @SuppressWarnings("SqlNoDataSourceInspection")
+    @Query(value = "SELECT * FROM roles r WHERE CAST(:search AS TEXT) IS NULL OR :search = '' OR LOWER(r.name) LIKE LOWER(CONCAT('%', CAST(:search AS TEXT), '%'))",
+           countQuery = "SELECT COUNT(*) FROM roles r WHERE CAST(:search AS TEXT) IS NULL OR :search = '' OR LOWER(r.name) LIKE LOWER(CONCAT('%', CAST(:search AS TEXT), '%'))",
            nativeQuery = true)
     Page<Role> search(@Param("search") String search, Pageable pageable);
-
-    boolean existsById(Integer id);
 }
