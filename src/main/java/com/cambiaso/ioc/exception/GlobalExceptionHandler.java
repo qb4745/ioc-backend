@@ -94,9 +94,23 @@ public class GlobalExceptionHandler {
                 .body(createErrorResponse("VALIDATION_ERROR", message));
     }
 
+    @ExceptionHandler(org.springframework.data.mapping.PropertyReferenceException.class)
+    public ResponseEntity<Map<String, Object>> handlePropertyReference(org.springframework.data.mapping.PropertyReferenceException ex) {
+        log.warn("Invalid property reference: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(createErrorResponse("INVALID_SORT_PROPERTY", "Invalid sort property specified"));
+    }
+
+    @ExceptionHandler(org.springframework.dao.InvalidDataAccessApiUsageException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidDataAccess(org.springframework.dao.InvalidDataAccessApiUsageException ex) {
+        log.warn("Invalid data access: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(createErrorResponse("INVALID_REQUEST", "Invalid query parameters"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericError(Exception ex) {
-        log.error("Unexpected error", ex);
+        log.error("Unexpected error: {} - {}", ex.getClass().getName(), ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(createErrorResponse("INTERNAL_ERROR", "An unexpected error occurred"));
     }

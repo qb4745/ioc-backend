@@ -13,9 +13,8 @@ public interface RoleRepository extends JpaRepository<Role, Integer> {
     Optional<Role> findByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCase(String name);
 
-    @Query("SELECT r FROM Role r WHERE (:search IS NULL OR LOWER(r.name) LIKE LOWER(CONCAT('%', :search, '%')))")
+    @Query("SELECT r FROM Role r WHERE :search IS NULL OR LOWER(r.name) LIKE LOWER(CONCAT('%', :search, '%'))")
     Page<Role> search(@Param("search") String search, Pageable pageable);
 
     boolean existsById(Integer id);
 }
-

@@ -33,7 +33,7 @@ public class PageableConfig implements WebMvcConfigurer {
         public CustomPageableHandlerMethodArgumentResolver() {
             setOneIndexedParameters(false);
             setMaxPageSize(100);
-            setFallbackPageable(PageRequest.of(0, 20));
+            setFallbackPageable(PageRequest.of(0, 20, Sort.unsorted()));
         }
 
         @Override
@@ -45,7 +45,7 @@ public class PageableConfig implements WebMvcConfigurer {
             String sortParam = webRequest.getParameter("sort");
 
             // Handle JSON array format: ["name,asc"] or ["name","asc"]
-            if (sortParam != null && sortParam.startsWith("[") && sortParam.endsWith("]")) {
+            if (sortParam != null && !sortParam.isEmpty() && sortParam.startsWith("[") && sortParam.endsWith("]")) {
                 try {
                     // Parse the JSON array
                     String[] sortArray = objectMapper.readValue(sortParam, String[].class);
@@ -54,14 +54,18 @@ public class PageableConfig implements WebMvcConfigurer {
                         List<Sort.Order> orders = new ArrayList<>();
 
                         for (String sortStr : sortArray) {
-                            String[] parts = sortStr.split(",");
-                            if (parts.length >= 1) {
-                                String property = parts[0].trim();
-                                Sort.Direction direction = parts.length > 1 &&
-                                    "desc".equalsIgnoreCase(parts[1].trim())
-                                    ? Sort.Direction.DESC
-                                    : Sort.Direction.ASC;
-                                orders.add(new Sort.Order(direction, property));
+                            if (sortStr != null && !sortStr.isEmpty()) {
+                                String[] parts = sortStr.split(",");
+                                if (parts.length >= 1) {
+                                    String property = parts[0].trim();
+                                    if (!property.isEmpty()) {
+                                        Sort.Direction direction = parts.length > 1 &&
+                                            "desc".equalsIgnoreCase(parts[1].trim())
+                                            ? Sort.Direction.DESC
+                                            : Sort.Direction.ASC;
+                                        orders.add(new Sort.Order(direction, property));
+                                    }
+                                }
                             }
                         }
 
@@ -70,8 +74,8 @@ public class PageableConfig implements WebMvcConfigurer {
                             String pageParam = webRequest.getParameter("page");
                             String sizeParam = webRequest.getParameter("size");
 
-                            int page = pageParam != null ? Integer.parseInt(pageParam) : 0;
-                            int size = sizeParam != null ? Math.min(100, Integer.parseInt(sizeParam)) : 20;
+                            int page = pageParam != null ? Math.max(0, Integer.parseInt(pageParam)) : 0;
+                            int size = sizeParam != null ? Math.min(100, Math.max(1, Integer.parseInt(sizeParam))) : 20;
 
                             return PageRequest.of(page, size, Sort.by(orders));
                         }
@@ -82,7 +86,28 @@ public class PageableConfig implements WebMvcConfigurer {
             }
 
             // Fall back to default Spring behavior
-            return super.resolveArgument(methodParameter, mavContainer, webRequest, binderFactory);
+            try {
+                Pageable resolved = super.resolveArgument(methodParameter, mavContainer, webRequest, binderFactory);
+
+                // Ensure we have a valid pageable with proper defaults
+                if (resolved == null) {
+                    return PageRequest.of(0, 20, Sort.unsorted());
+                }
+
+                // If sort is null or empty, explicitly set to unsorted
+                if (resolved.getSort() == null || resolved.getSort().isUnsorted()) {
+                    return PageRequest.of(
+                        Math.max(0, resolved.getPageNumber()),
+                        Math.min(100, Math.max(1, resolved.getPageSize())),
+                        Sort.unsorted()
+                    );
+                }
+
+                return resolved;
+            } catch (Exception e) {
+                log.error("Error resolving pageable, using fallback", e);
+                return PageRequest.of(0, 20, Sort.unsorted());
+            }
         }
     }
 }
