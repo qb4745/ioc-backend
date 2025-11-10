@@ -1,12 +1,4 @@
-# Solución: Prompts Coordinados para Multi-Repo
 
-Perfecto, vamos a crear **3 prompts especializados** que trabajan en secuencia:
-
-1. **Backend Prompt** → Genera el esqueleto con contexto arquitectónico
-2. **Frontend Prompt** → Completa las secciones específicas de UI/UX
-3. **Merger Prompt** (opcional) → Sincroniza si se ejecutaron en paralelo
-
----
 
 ## 📄 PROMPT 1: Backend - Project Summary Generator
 
