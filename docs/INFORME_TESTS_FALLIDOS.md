@@ -248,5 +248,48 @@ Estado actual
 
 Próximos pasos sugeridos
 1. Revisar otras clases de `GlobalTestConfiguration` para detectar servicios que no deberían estar globalmente mockeados (ej. servicios cuya lógica interna debe probarse en integración).
-2. Añadir test(s) que validen el patrón de overrides (p. ej. test que valida que `MetabaseEmbeddingService` pueda inicializarse en profile `test`).
-3. Documentar en `docs/INFORME_TESTS_FALLIDOS.md` (esta sección) y en `.gemini/docs/TESTING_STRATEGY.md` (se agregó una nota) la decisión y ejemplo para futuros desarrolladores.
+2. Añadir test(s) que validen el patrón de overrides (por ejemplo, test que valida que `MetabaseEmbeddingService` pueda inicializarse en profile `test`).
+3. Documentar en `docs/INFORME_TESTS_FALLIDOS.md` (esta sección añadida) y en `.gemini/docs/TESTING_STRATEGY.md` (se agregó una nota) la decisión y ejemplo para futuros desarrolladores.
+
+INFORME: fallo en test AdvisoryLockSerializationTest y solucion aplicada
+
+Fecha: 2025-11-11
+Autor: (automatizado) - cambios aplicados en repo de pruebas
+
+Resumen:
+- Test afectado: src/test/java/com/cambiaso/ioc/service/AdvisoryLockSerializationTest
+- Sintoma: al cargar el contexto de Spring durante el test se producia una excepcion UnsatisfiedDependencyException que bloqueaba el arranque del ApplicationContext.
+- Error visible en logs: fallo al crear el bean 'supabaseAuthService' por inyeccion de dependencias (falta de valores para @Value)
+
+Diagnostico:
+- La clase com.cambiaso.ioc.service.SupabaseAuthService tiene dos propiedades inyectadas con @Value:
+  - supabase.url
+  - supabase.service-role-key
+- El test usa el perfil 'pgtest' (@ActiveProfiles("pgtest")), que carga src/test/resources/application-pgtest.properties.
+- El fichero `application-pgtest.properties` no contenia las propiedades `supabase.url` y `supabase.service-role-key`, por lo que Spring no podia resolver esas @Value y el bean no se inicializaba.
+
+Accion tomada (solucion aplicada):
+- Se agregaron valores de prueba (mock) para Supabase al fichero:
+  - src/test/resources/application-pgtest.properties
+  Valores añadidos:
+    supabase.url=http://localhost:54321
+    supabase.service-role-key=test-service-role-key-for-testing-only
+- Razon: proporcionar valores de prueba permite que el bean `SupabaseAuthService` sea construido por Spring y evita que la falta de configuracion externa bloquee los tests de integracion que no interactuan realmente con Supabase.
+
+Archivos modificados:
+- src/test/resources/application-pgtest.properties  (añadidas propiedades supabase.url y supabase.service-role-key)
+
+Estado actual:
+- El test `AdvisoryLockSerializationTest` pasa (verificacion manual por el desarrollador). El ApplicationContext se carga correctamente con el perfil 'pgtest'.
+
+Recomendaciones y pasos siguientes:
+1. Centralizar propiedades comunes de testing en `src/test/resources/application-test.properties` y mantener perfiles específicos (como pgtest) solo con diferencias necesarias.
+2. Para tests que no necesitan el comportamiento de Supabase, considerar usar @MockBean en las clases de test para reemplazar `SupabaseAuthService` o crear una clase de configuracion de test que provea un bean 'stub' de SupabaseAuthService.
+3. Añadir validacion automatica en la CI para detectar propiedades faltantes en perfiles de test (por ejemplo, un pequeño test que valida que todas las claves @Value necesarias esten presentes en los properties de test).
+4. Documentar en la estrategia de testing (archivo .gemini/docs/TESTING_STRATEGY.md) la necesidad de proveer valores por defecto para servicios externos o mockearlos en los tests de integracion.
+
+Notas:
+- La solucion aplicada usa valores de prueba no secretos. No incluir claves reales en el repositorio.
+- Si se prefiere no incluir esas propiedades en `application-pgtest.properties`, alternativa: anadir un bean de test que proporcione SupabaseAuthService como stub o usar @MockBean en los tests que cargan todo el contexto.
+
+Fin del informe.
