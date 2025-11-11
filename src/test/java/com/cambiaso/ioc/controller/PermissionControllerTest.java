@@ -55,7 +55,7 @@ class PermissionControllerTest {
         Mockito.when(permissionService.search(eq("read"), any(PageRequest.class))).thenReturn(page);
         Mockito.when(permissionMapper.toResponse(any(Permission.class))).thenReturn(new PermissionResponse());
 
-        mockMvc.perform(get("/api/admin/permissions").param("search", "read"))
+        mockMvc.perform(get("/api/v1/admin/permissions").param("search", "read"))
                 .andExpect(status().isOk());
     }
 }

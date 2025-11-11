@@ -32,28 +32,28 @@ class AssignmentControllerTest {
     @Test
     void assignRoleToUser_returns200() throws Exception {
         doNothing().when(assignmentService).assignRoleToUser(1L, 2, null);
-        mockMvc.perform(post("/api/admin/assignments/users/1/roles/2"))
+        mockMvc.perform(post("/api/v1/admin/assignments/users/1/roles/2"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void removeRoleFromUser_returns204() throws Exception {
         doNothing().when(assignmentService).removeRoleFromUser(1L, 2);
-        mockMvc.perform(delete("/api/admin/assignments/users/1/roles/2"))
+        mockMvc.perform(delete("/api/v1/admin/assignments/users/1/roles/2"))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     void assignPermissionToRole_returns200() throws Exception {
         doNothing().when(assignmentService).assignPermissionToRole(3, 5);
-        mockMvc.perform(post("/api/admin/assignments/roles/3/permissions/5"))
+        mockMvc.perform(post("/api/v1/admin/assignments/roles/3/permissions/5"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void removePermissionFromRole_returns204() throws Exception {
         doNothing().when(assignmentService).removePermissionFromRole(3, 5);
-        mockMvc.perform(delete("/api/admin/assignments/roles/3/permissions/5"))
+        mockMvc.perform(delete("/api/v1/admin/assignments/roles/3/permissions/5"))
                 .andExpect(status().isNoContent());
     }
 }

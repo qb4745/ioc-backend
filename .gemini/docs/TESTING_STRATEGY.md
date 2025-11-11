@@ -560,7 +560,43 @@ logging.level.org.hibernate.SQL=DEBUG
 
 ---
 
-```
+## Nota: Mocks globales vs overrides por test (lección aprendida)
+
+Se identificó un caso práctico donde la configuración global de tests (`GlobalTestConfiguration`) estaba mockeando servicios que algunos tests de integración necesitan probar con su implementación real (en particular `MetabaseEmbeddingService`). Esto causó que `DashboardControllerIntegrationTest` no ejercitara la lógica real y, además, que la carga del contexto fallara por dependencias/propiedades no provistas (ej. `SupabaseAuthService` y propiedades `supabase.*`).
+
+Recomendación concreta (patrón a seguir):
+
+- Preferir mocks globales únicamente para servicios que NUNCA deben ejecutarse en tests (p. ej. notificaciones WebSocket, sistemas de métricas que requieren backend externo), y **no** para servicios cuyo comportamiento real quieras validar en tests de integración.
+
+- Para tests de integración que necesitan el servicio real, usar un `@TestConfiguration` local y `@Import(...)` en el test. Ejemplo de patrón:
+  1. Crear `DashboardControllerTestConfiguration` con beans mockeados solo para dependencias externas (JwtDecoder, SupabaseAuthService, NotificationService, etc.) y con `@Primary` donde haga falta.
+  2. No declarar un mock de `MetabaseEmbeddingService` en esa configuración para que Spring cargue la implementación real (que usará las propiedades de `application-test.properties`).
+  3. En el test, usar `@SpringBootTest`, `@AutoConfigureMockMvc` y `@Import(DashboardControllerTestConfiguration.class)`.
+
+- Alternativa rápida cuando haya colisiones de beans: marcar beans productivos con `@ConditionalOnMissingBean` y proveer en tests el bean mock con `@Primary`. Sin embargo, esta alternativa es útil para resolver colisiones puntuales; el patrón preferido es usar configuraciones por test.
+
+Acciones operativas recomendadas a raíz del incidente
+
+1. Añadir valores sintéticos a `src/test/resources/application-test.properties` para servicios externos que se inicializan en el arranque y que no se desean llamar realmente desde tests (ej.: `supabase.url`, `supabase.service-role-key`, `metabase.site-url`, `metabase.secret-key` de test con formato válido). Esto evita fallos en la inicialización de beans que dependen de `@Value`.
+
+2. Asegurarse de que los tests de integración que requieren roles u otros fixtures tengan inserts iniciales en `init-h2.sql` o usen `@Sql` / `TestEntityManager` en `@BeforeEach` para poblar `roles`/`user_roles` mínimos.
+
+3. Añadir un `ContextLoadSmokeTest` (profile `test`) que haga sólo `@SpringBootTest` y verifique que el contexto arranca — esto detecta fallos de autoconfiguración temprano.
+
+4. Documentar el patrón en `docs/INFORME_TESTS_FALLIDOS.md` (ya actualizado) y en la guía de testing para que otros desarrolladores sigan la convención.
+
+Resultado del caso `DashboardControllerIntegrationTest`
+
+- Se aplicó el patrón descrito: se creó `DashboardControllerTestConfiguration` y se actualizó el test para importar dicha configuración.
+- Se añadieron propiedades `supabase.*` a `application-test.properties` para permitir la inicialización de `SupabaseAuthService` (mocked) y se dejó la configuración de Metabase (clave hex de 64 chars y `metabase.site-url`) por defecto para que `MetabaseEmbeddingService` pueda iniciarse y generar URLs firmadas durante el test.
+- El test ahora pasa localmente (3 tests, 0 fallos) y se validó con `./mvnw -Dtest=DashboardControllerIntegrationTest test` (BUILD SUCCESS).
+
+Notas finales
+
+- Este patrón reduce sorpresas al ejecutar tests y mantiene la capacidad de validar la lógica real en tests de integración cuando es necesario.
+- Si deseas, puedo crear el `ContextLoadSmokeTest` automáticamente y añadirlo al proyecto, además de ejecutar una pasadita de la suite completa para buscar otros tests rotos por el mismo problema.
+
+---
 
 ## ❌ **ANTI-PATRONES (QUÉ NO HACER)**
 
@@ -594,7 +630,7 @@ class MyTest extends AbstractIntegrationTest {
 class MyTest {
 }
 
-// ✅ BIEN - Extiende la clase base
+// ✅ BIEN - Extender la clase base
 class MyTest extends AbstractIntegrationTest {
 }
 ```

@@ -57,7 +57,7 @@ class RoleControllerTest {
         Page<RoleResponse> page = new PageImpl<>(List.of(resp), PageRequest.of(0, 1), 1);
         Mockito.when(roleService.searchWithDetails(eq("adm"), any(PageRequest.class))).thenReturn(page);
 
-        mockMvc.perform(get("/api/admin/roles").param("search", "adm"))
+        mockMvc.perform(get("/api/v1/admin/roles").param("search", "adm"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(1))
@@ -76,7 +76,7 @@ class RoleControllerTest {
 
         Mockito.when(roleService.getByIdWithDetails(5)).thenReturn(resp);
 
-        mockMvc.perform(get("/api/admin/roles/5"))
+        mockMvc.perform(get("/api/v1/admin/roles/5"))
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5))

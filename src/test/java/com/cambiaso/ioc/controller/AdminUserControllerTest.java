@@ -50,7 +50,7 @@ class AdminUserControllerTest extends AbstractIntegrationTest {
         when(userAdminService.search(any(), any(), any(), any()))
             .thenReturn(new PageImpl<>(List.of(u), PageRequest.of(0, 20), 1));
 
-        mockMvc.perform(get("/api/admin/users"))
+        mockMvc.perform(get("/api/v1/admin/users"))
                 .andExpect(status().isOk());
     }
 
@@ -61,7 +61,7 @@ class AdminUserControllerTest extends AbstractIntegrationTest {
         u.setId(2);
         when(userAdminService.getById(2L)).thenReturn(u);
 
-        mockMvc.perform(get("/api/admin/users/2"))
+        mockMvc.perform(get("/api/v1/admin/users/2"))
                 .andExpect(status().isOk());
     }
 
@@ -82,10 +82,10 @@ class AdminUserControllerTest extends AbstractIntegrationTest {
         resp.setId(3);
         when(userAdminService.create(any(UsuarioCreateRequest.class))).thenReturn(resp);
 
-        mockMvc.perform(post("/api/admin/users")
+        mockMvc.perform(post("/api/v1/admin/users")
                 .contentType(APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk());
+                .andExpect(status().isCreated());  // 201 Created es el código correcto
     }
 
     @Test
@@ -98,7 +98,7 @@ class AdminUserControllerTest extends AbstractIntegrationTest {
         resp.setId(4);
         when(userAdminService.update(eq(4L), any(UsuarioUpdateRequest.class))).thenReturn(resp);
 
-        mockMvc.perform(put("/api/admin/users/4")
+        mockMvc.perform(put("/api/v1/admin/users/4")
                 .contentType(APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk());
@@ -109,7 +109,7 @@ class AdminUserControllerTest extends AbstractIntegrationTest {
     void delete_returns204() throws Exception {
         doNothing().when(userAdminService).delete(5L);
 
-        mockMvc.perform(delete("/api/admin/users/5"))
+        mockMvc.perform(delete("/api/v1/admin/users/5"))
                 .andExpect(status().isNoContent());
     }
 }

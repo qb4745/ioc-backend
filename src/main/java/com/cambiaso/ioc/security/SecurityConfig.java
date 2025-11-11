@@ -4,6 +4,7 @@ import com.cambiaso.ioc.persistence.repository.AppUserRepository;
 import com.cambiaso.ioc.persistence.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
@@ -118,6 +119,7 @@ public class SecurityConfig {
     }
 
     @Bean
+    @ConditionalOnMissingBean(JwtDecoder.class)
     public JwtDecoder jwtDecoder() {
         // Construct the JWK Set URI from the issuer URI
         String jwkSetUri = this.issuerUri + "/.well-known/jwks.json";
