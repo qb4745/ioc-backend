@@ -1297,7 +1297,7 @@ Desventaja:
 
 ### Seguridad y RBAC
 
-- Endpoint protegido con `@PreAuthorize` para roles ADMIN, MANAGER, USER
+- Endpoint protegido con `@PreAuthorize` para roles ADMIN, GERENTE, ANALISTA
 - Validación adicional: verificar que usuario tiene permisos para ese dashboard específico
 - Reutilizar `DashboardSecurityService` si existe en el proyecto
 - O implementar check manual contra configuración de dashboards permitidos
@@ -1327,11 +1327,11 @@ Desventaja:
 - [x] Confirmar: queremos Alternativa A (Botón Global) ✅
 - [x] **Formato de respuesta: JSON** (más confiable que Markdown) ✅
 - [x] **Componente frontend identificado**: `DashboardEmbed.tsx` ✅
-- [ ] Proveer contexto de negocio básico (ver sección 12) para integrar en System Prompt
+- [X] Proveer contexto de negocio básico (ver sección 12) para integrar en System Prompt
 - [x] Obtener `GEMINI_API_KEY` (Makersuite) ✅
-- [ ] Decidir si anonimizar nombres de operarios (recomendado: NO para valor interno)
+- [X] Decidir si anonimizar nombres de operarios (NO se anonimizarán para valor interno)
 - [x] **Decisión de persistencia tomada: `NamedParameterJdbcTemplate` seleccionado para queries analíticas** ✅
-- [ ] Habilitar solo a **ROLE_ADMIN** inicialmente (feature flag)
+- [X] Habilitar solo a **ROLE_ADMIN** y **ROLE_GERENTE** inicialmente (feature flag)
 
 ---
 
