@@ -1,0 +1,387 @@
+# Contexto de negocio - FP-001A (Plantilla para completar)
+# Rellena los valores reales para que se puedan incorporar al System Prompt y al feature
+
+company:
+  name: "Cambiaso"
+  legal_name: "Cambiaso S.A."  # opcional
+  industry: "Manufactura"      # ej: Alimentos, Empaque, Industrial
+  description: ""            # breve descripción del negocio (1-2 líneas)
+
+products:
+  # Lista de SKUs importantes y su descripción/objetivo
+  - sku: 45001
+    name: "Caja Grande"
+    description: "Caja para empaque final, 50x50"
+    objetivo_share_percent: 40    # % objetivo del mix de producción mensual
+    unidad: "cajas"
+  - sku: 45002
+    name: "Caja Pequeña"
+    description: "Caja pequeña para muestras"
+    objetivo_share_percent: 20
+    unidad: "cajas"
+
+metrics:
+  unidad_cantidad: "piezas"            # ¿qué significa `cantidad` en BD?
+  peso_unit: "kg"
+  objetivo_mensual_unidades: 150000     # objetivo global por mes (ejemplo)
+  objetivo_diario_por_operario: 500     # objetivo por operario por día
+  objetivo_eficiencia_turno_dia_percent: 70
+
+shifts:
+  dia:
+    name: "Día"
+    start: "06:00"
+    end: "18:00"
+    expectation: "Mayor productividad"
+  noche:
+    name: "Noche"
+    start: "18:00"
+    end: "06:00"
+    expectation: "70% del turno diurno"
+
+workdays:
+  types:
+    - name: "Normal"
+      impact: "Sin recargo"
+    - name: "Extra"
+      impact: "Pago extra, más productividad"
+    - name: "Festivo"
+      impact: "Menor personal, mayor costo"
+  max_range_months_in_prompt: 12
+
+machines:
+  types:
+    - code: "ENVASADORA"
+      description: "Máquina principal de envasado"
+    - code: "SELLADORA"
+      description: "Máquina de sellado"
+  critical_machines:
+    - codigo_maquina: "MAQ-001"
+      nombre_maquina: "Envasadora Principal"
+      notes: "Alta carga, candidato a mantenimiento preventivo prioritario"
+    - codigo_maquina: "MAQ-003"
+      nombre_maquina: "Empacadora Secundaria"
+      notes: "Backup, uso variable"
+
+operators:
+  id_fields:
+    - "maquinista_fk"
+    - "codigo_maquinista"
+  anonymize_names: false   # true -> anonimizamos nombres al enviar a Gemini
+  anonymization_policy: "Si true, reemplazar nombre_completo por Operario #N"
+
+dashboards:
+  default_period: "last_month"   # valores posibles: last_month, last_30_days, custom
+  permitted_filters:
+    - centro_costos
+    - turno
+    - maquina_id
+    - material_sku
+  per_dashboard_metadata:
+    "5":   # dashboardId: ejemplo 5 (Producción por Operario)
+      title: "Producción por Operario - Mensual"
+      type: "OPERACIONAL"
+      description: "Analiza producción por operario y por máquina"
+      graphs:
+        - id: "grafico_1"
+          title: "Top 10 Operarios por Unidades"
+          type: "bar_chart"
+          suggested_query: "-- VER TEMPLATE: usar Query 2 del Feature Plan para top operarios"
+        - id: "grafico_2"
+          title: "Tendencia Diaria de Producción"
+          type: "line_chart"
+          suggested_query: "-- VER TEMPLATE: usar Query 5 del Feature Plan"
+
+data_quality:
+  null_values_policy: "COALESCE nombres o marcar como 'Sin asignar' para maquinista"
+  outlier_detection_thresholds:
+    production_spike_pct: 50    # si un día > +50% vs promedio diario -> considerar pico
+    low_activity_days: 3       # si operario tiene 0 registros en últimos X días -> alerta
+
+security:
+  pii_fields:
+    - nombre_completo
+    - usuario_sap
+  send_pii_to_gemini: false    # si false, anonimizar antes de enviar
+  audit_log_required: true
+  audit_fields:
+    - userId
+    - dashboardId
+    - fechaInicio
+    - fechaFin
+    - tokensUsados
+    - fromCache
+    - durationMs
+
+integration_notes:
+  metabase_api: false   # Para Alternativa A NO usamos Metabase API; backend ejecuta queries
+  reason: "Evitar dependencias y respetar same-origin; usamos queries en backend"
+  gemini_api_usage: "Generar texto (Markdown) a partir de datos agregados"
+
+gemini_prompt_guidelines:
+  system_description: |
+    Eres un analista de datos que explica dashboards de producción para Cambiaso.
+    Utiliza los nombres de columnas y las métricas proporcionadas.
+    Responde en español. No inventes valores.
+  max_input_tokens: 2000
+  max_response_tokens: 500
+  required_output_structure: |
+    # 📊 RESUMEN EJECUTIVO
+    [2-3 líneas]
+
+    # 🔑 KEY POINTS
+    • [punto 1]
+    • [punto 2]
+
+    # ⚡ INSIGHTS ACCIONABLES
+    • [insight 1]
+
+few_shot_examples:
+  - example_name: "Operario líder - ejemplo"
+    input_summary: |
+      Totales: produccion_total=145320, peso_total_kg=32340, total_operarios=18
+      Top operario: Carlos González, 15234 unidades en 23 días
+    expected_output_snippet: |
+      # 📊 RESUMEN EJECUTIVO
+      En junio 2025 se produjeron 145,320 unidades... (2-3 líneas)
+
+      # 🔑 KEY POINTS
+      • Carlos González lidera con 15,234 unidades (10.5% del total)
+
+      # ⚡ INSIGHTS ACCIONABLES
+      • Revisar MAQ-001 por alta carga; considerar mantenimiento preventivo.
+
+operational_policies:
+  cache_ttl_minutes: 5
+  rate_limit_per_user_per_minute: 5
+  max_query_range_months: 12
+
+contacts:
+  product_owner:
+    name: ""
+    email: ""
+  tech_lead:
+    name: ""
+    email: ""
+
+notes:
+  - "Rellenar todos los campos marcados como ejemplo antes de implementación"
+  - "Si `send_pii_to_gemini` es true, marcar razón y obtener aprobación legal"
+
+data_model:
+  fact_production:
+    table: public.fact_production
+    description: "Tabla de hechos: un registro por evento de producción (p. ej. pallet/registro)"
+    primary_key: id
+    natural_key: [fecha_contabilizacion, maquina_fk, "COALESCE(maquinista_fk,0)", numero_log]
+    indexes:
+      - name: idx_fact_production_fecha
+        columns: [fecha_contabilizacion]
+      - name: uq_fact_prod_natural
+        unique: true
+        columns: [fecha_contabilizacion, maquina_fk, "COALESCE(maquinista_fk,0)", numero_log]
+    columns:
+      fecha_contabilizacion:
+        type: date
+        required: true
+        description: "Fecha del registro de producción (granularidad: día). Usada para filtros de período y series temporales."
+        usage: ["filter","group_by","time_series"]
+      id:
+        type: bigserial
+        required: true
+        description: "Primary key (surrogate)."
+      bodeguero:
+        type: character varying(100)
+        required: false
+        description: "Nombre del bodeguero/operador de almacén (opcional)."
+        pii: true
+      cantidad:
+        type: numeric(18,4)
+        required: true
+        description: "Unidades producidas por registro. Interprete según `metrics.unidad_cantidad`."
+        aggregation: SUM
+        usage: ["production_total","avg_per_day","top_operarios"]
+      centro_costos:
+        type: bigint
+        required: false
+        description: "Centro de costos contable (opcional)."
+      documento:
+        type: bigint
+        required: false
+        description: "Referencia de documento/orden (opcional)."
+      fecha_notificacion:
+        type: date
+        required: true
+        description: "Fecha de notificación del registro (puede coincidir con fecha_contabilizacion)."
+      hora_contabilizacion:
+        type: time without time zone
+        required: true
+        description: "Hora en que se contabilizó el registro."
+      jornada:
+        type: character varying(10)
+        required: false
+        description: "Tipo de jornada (Normal/Extra/Festivo)."
+      lista:
+        type: character varying(10)
+        required: false
+        description: "Campo auxiliar/etiqueta del proceso."
+      material_descripcion:
+        type: character varying(255)
+        required: false
+        description: "Descripción textual del material/SKU."
+      material_sku:
+        type: bigint
+        required: true
+        description: "SKU numérico del material producido. Vincular con catálogo de productos."
+      numero_log:
+        type: bigint
+        required: true
+        description: "Número de log/orden de producción; junto a fecha, máquina y maquinista define unicidad natural."
+      numero_pallet:
+        type: integer
+        required: false
+        description: "Identificador del pallet (si aplica)."
+      peso_neto:
+        type: numeric(18,4)
+        required: true
+        description: "Peso neto total del registro (kg)."
+        aggregation: SUM
+      turno:
+        type: character varying(10)
+        required: true
+        description: "Turno en que se produjo (p. ej. 'Día', 'Noche'). Usado para distribución por turno."
+      usuario_sap:
+        type: character varying(100)
+        required: false
+        description: "Usuario SAP que registró la operación (opcional)."
+        pii: true
+      version_produccion:
+        type: character varying(50)
+        required: false
+        description: "Versión del proceso/linea de producción."
+      maquina_fk:
+        type: bigint
+        required: true
+        description: "FK a dim_maquina.id - máquina que produjo el registro."
+        fk: "dim_maquina.id"
+      maquinista_fk:
+        type: bigint
+        required: false
+        description: "FK a dim_maquinista.id - operario que realizó la operación (nullable)."
+        fk: "dim_maquinista.id"
+      status_origen:
+        type: character varying(10)
+        required: false
+        description: "Origen o estado del registro (sistema origen)."
+
+  dim_maquinista:
+    table: public.dim_maquinista
+    description: "Dimensión de operarios (maquinistas)."
+    primary_key: id
+    columns:
+      id:
+        type: bigint
+        description: "PK (identity)."
+      codigo_maquinista:
+        type: bigint
+        description: "Código único del operario."
+      nombre_completo:
+        type: character varying(255)
+        description: "Nombre completo del operario. (PII)"
+        pii: true
+      created_at:
+        type: timestamp with time zone
+        description: "Audit: creación del registro."
+      updated_at:
+        type: timestamp with time zone
+        description: "Audit: última actualización."
+
+  dim_maquina:
+    table: public.dim_maquina
+    description: "Dimensión de máquinas."
+    primary_key: id
+    columns:
+      id:
+        type: bigint
+        description: "PK (identity)."
+      codigo_maquina:
+        type: character varying(255)
+        description: "Código único de la máquina (ej: 'MAQ-001')."
+      nombre_maquina:
+        type: character varying(255)
+        description: "Nombre descriptivo de la máquina."
+      created_at:
+        type: timestamp with time zone
+        description: "Audit: creación del registro."
+      updated_at:
+        type: timestamp with time zone
+        description: "Audit: última actualización."
+
+  foreign_keys:
+    - column: maquinista_fk
+      references: public.dim_maquinista.id
+    - column: maquina_fk
+      references: public.dim_maquina.id
+
+aggregations_for_prompts:
+  description: "Plantillas SQL agregadas que el backend puede ejecutar para construir el prompt enviado a Gemini. Reemplazar :fechaInicio/:fechaFin y otros binds según sea necesario."
+  total_summary: |
+    SELECT
+      COUNT(DISTINCT maquinista_fk) AS total_operarios,
+      COUNT(DISTINCT maquina_fk) AS total_maquinas,
+      SUM(cantidad) AS produccion_total,
+      SUM(peso_neto) AS peso_total_kg,
+      MIN(fecha_contabilizacion) AS fecha_inicio,
+      MAX(fecha_contabilizacion) AS fecha_fin
+    FROM public.fact_production fp
+    WHERE fp.fecha_contabilizacion BETWEEN :fechaInicio AND :fechaFin;
+
+  top_operarios: |
+    SELECT
+      dm.codigo_maquinista,
+      dm.nombre_completo,
+      COUNT(DISTINCT fp.fecha_contabilizacion) as dias_trabajados,
+      SUM(fp.cantidad) as total_unidades,
+      ROUND(SUM(fp.cantidad)::numeric / NULLIF(COUNT(DISTINCT fp.fecha_contabilizacion),0),2) as promedio_unidades_por_dia,
+      STRING_AGG(DISTINCT dmaq.nombre_maquina, ', ') as maquinas_utilizadas
+    FROM public.fact_production fp
+    LEFT JOIN public.dim_maquinista dm ON fp.maquinista_fk = dm.id
+    LEFT JOIN public.dim_maquina dmaq ON fp.maquina_fk = dmaq.id
+    WHERE fp.fecha_contabilizacion BETWEEN :fechaInicio AND :fechaFin
+    GROUP BY dm.id, dm.codigo_maquinista, dm.nombre_completo
+    ORDER BY total_unidades DESC
+    LIMIT 10;
+
+  distribution_by_shift: |
+    SELECT turno, SUM(cantidad) AS unidades, COUNT(DISTINCT maquinista_fk) AS operarios
+    FROM public.fact_production
+    WHERE fecha_contabilizacion BETWEEN :fechaInicio AND :fechaFin
+    GROUP BY turno;
+
+  top_machines: |
+    SELECT dmaq.codigo_maquina, dmaq.nombre_maquina, SUM(fp.cantidad) as total_unidades
+    FROM public.fact_production fp
+    JOIN public.dim_maquina dmaq ON fp.maquina_fk = dmaq.id
+    WHERE fp.fecha_contabilizacion BETWEEN :fechaInicio AND :fechaFin
+    GROUP BY dmaq.id, dmaq.codigo_maquina, dmaq.nombre_maquina
+    ORDER BY total_unidades DESC
+    LIMIT 5;
+
+  daily_trend: |
+    SELECT fecha_contabilizacion, SUM(cantidad) as produccion_dia
+    FROM public.fact_production
+    WHERE fecha_contabilizacion BETWEEN :fechaInicio AND :fechaFin
+    GROUP BY fecha_contabilizacion
+    ORDER BY fecha_contabilizacion;
+
+recommended_prompt_fields:
+  - fecha_contabilizacion
+  - cantidad
+  - peso_neto
+  - maquina_fk
+  - maquinista_fk
+  - turno
+  - material_sku
+  - material_descripcion
+  - numero_pallet
+  - numero_log
