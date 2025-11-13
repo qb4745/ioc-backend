@@ -3,12 +3,13 @@ package com.cambiaso.ioc.dto.analytics;
 import java.math.BigDecimal;
 
 /**
- * DTO para top operarios (maquinistas) por unidades producidas.
+ * DTO para top máquinas por unidades producidas.
  * Ordenado descendente por totalUnidades.
  */
-public record TopOperarioDto(
-    String nombreCompleto,
-    Long codigoMaquinista,
+public record TopMachineDto(
+    String maquinaNombre,
+    String maquinaCodigo,
     BigDecimal totalUnidades,
     Integer numRegistros
 ) {}
+
