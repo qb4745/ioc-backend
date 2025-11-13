@@ -23,12 +23,25 @@ Este índice agrupa las especificaciones de servicio backend (BSS) generadas par
    - Fecha Implementación: 2025-11-12
    - Implementación recomendada: métodos read-only mapeando a Records DTO; validación de rango de 12 meses.
 
-2. BSS-002 — `BSS-002-GeminiApiClient.md`
-   - Ruta: `.gemini/blueprints/backend/BSS-002-GeminiApiClient.md`
+2. **BSS-002 — `BSS-002-GeminiApiClient.md`** ✅ **IMPLEMENTADO**
+   - Ruta: `.gemini/blueprints/backend/ai_explanaition/BSS-002-GeminiApiClient.md`
    - Tipo: External API Client (WebClient)
    - Propósito: Encapsular llamadas a Google Gemini (timeout 90s, retries, parsing)
-   - Estado: DRAFT
+   - Estado: **IMPLEMENTED** ✅
+   - Fecha Implementación: 2025-11-12
    - Implementación recomendada: WebClient.Builder bean, excepciones personalizadas, tests con WireMock.
+   - Nota de incidencia y solución aplicada:
+     - Problema detectado: al ejecutar los tests, se produjo una incompatibilidad entre H2 (perfil `test`) y PostgreSQL (producción):
+       - El tipo `citext` (usado en entidades como `AppUser.email`) no es soportado por H2.
+       - Hibernate con dialecto PostgreSQL ejecutó comandos específicos (ej. `set client_min_messages = WARNING`) que H2 no reconoce, provocando fallos al inicializar el contexto de Spring en algunos tests.
+     - Solución aplicada:
+       - El test `GeminiApiClientTest` se refactorizó para ajustarse al patrón de testing del proyecto: ahora extiende `AbstractIntegrationTest` (perfil `test`) para usar la configuración de H2 centralizada y los mocks globales.
+       - Se añadieron pruebas unitarias para la lógica del cliente (validaciones y estimación de tokens) y se preparó el terreno para usar `WireMock` en tests que simulen respuestas HTTP.
+       - Resultado inmediato: los tests de `GeminiApiClientTest` pasan (10 tests, 0 fallos) y el arranque del contexto ya no falla por DDL/SQL incompatible.
+     - Recomendaciones a seguir:
+       - Hacer el `baseUrl` de `GeminiApiClient` configurable por propiedad para poder apuntarlo a `WireMock` en tests sin cargar la capa de persistencia.
+       - Para pruebas que verdaderamente requieran características de PostgreSQL (citext, advisory locks, funciones PL/pgSQL), usar `Testcontainers` con `init-postgresql.sql` (ya presente) para habilitar extensiones (`citext`, `uuid-ossp`) y una clase base `AbstractPostgreSQLTest`.
+       - Documentar en la guía de testing el patrón "HTTP client + WireMock" y el checklist para decidir entre H2 vs Testcontainers.
 
 3. BSS-003 — `BSS-003-DashboardExplanationService.md`
    - Ruta: `.gemini/blueprints/backend/BSS-003-DashboardExplanationService.md`
@@ -320,4 +333,4 @@ Solución aplicada:
    - Ejecutar: `mvn -Dtest=DashboardAnalyticsRepositoryTest test` → la clase de tests pasa (15 tests, 0 fallos) después de los cambios.
 
 Notas importantes:
-- Esta adaptación mantiene la semántica de negocio (la validación sigue lanzando `IllegalArgumentException`) y además respeta la capa de abstracción que Spring proporciona al traducir excepciones SQL/DAO. Para pruebas unitarias puras de la lógica de validación se puede considerar añadir tests unitarios específicos para `validateDateRange()` (p. ej. package-visible o por reflexión) si se desea comprobar la excepción sin el proxy de Spring.
+- Esta adaptación mantiene la semántica de negocio (la validación sigue lanzando `IllegalArgumentException`) y además respeta la capa de abstracción que Spring proporciona al traducir excepciones SQL/DAO. Para pruebas unitarias puras de la lógica de validación se puede considerar añadir tests unitarios específicos para `validateDateRange()` (p. ej. usando un repositorio en memoria o un mock de `NamedParameterJdbcTemplate`).

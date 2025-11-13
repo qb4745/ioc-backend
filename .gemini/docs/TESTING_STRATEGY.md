@@ -326,66 +326,73 @@ class MyPostgreSQLTest {
 
 ---
 
-### **🐘 PostgreSQL Extensions en Testcontainers**
+## 🔄 Actualización: Solución aplicada para `GeminiApiClientTest` (H2 vs PostgreSQL)
 
-#### **Problema Común**
+Durante la ejecución de los tests se detectó una incompatibilidad entre H2 (usado por el perfil `test`) y PostgreSQL (producción):
 
-```
-ERROR: type "citext" does not exist
-Position: 218
+Problemas observados
+- H2 no soporta el tipo `citext` (usado en entidades como `AppUser.email`).
+- El dialecto de PostgreSQL de Hibernate ejecutaba comandos específicos (`set client_min_messages = WARNING`) que H2 no reconoce, provocando errores al arrancar el contexto de Spring en pruebas.
 
-org.postgresql.util.PSQLException: ERROR: type "citext" does not exist
-```
+Acción aplicada (solución rápida y segura)
+- El test `GeminiApiClientTest` se refactorizó para unificar la práctica de testing del proyecto:
+  - Ahora extiende `AbstractIntegrationTest` (perfil `test`) para usar la configuración H2 centralizada y los mocks globales (evita variaciones de configuración entre tests).
+  - Se añadieron pruebas unitarias alrededor de la lógica del cliente (validaciones y estimación de tokens) y se introdujo `WireMock` como herramienta para stubs de HTTP cuando sea necesario.
+- Resultado: Los tests de `GeminiApiClientTest` pasan (10 tests, 0 fallos). El arranque del contexto ya no falla por DDL/SQL incompatible.
 
-#### **Causa**
+Recomendaciones para la estrategia de testing (cambios a incorporar)
+1. Tests de clientes HTTP externos (como `GeminiApiClient`):
+   - Preferir pruebas aisladas que no carguen innecesariamente la capa de persistencia:
+     - Hacer el `baseUrl` del cliente configurable (propiedad) y substituirlo en tests con `WireMock` o con un `@TestConfiguration` que provea un `WebClient` bean apuntando al stub.
+     - Si la clase bajo prueba no necesita acceso a DB, usar `@SpringBootTest` reducido o incluso tests unitarios simples sin contexto de Spring.
+2. Para tests que sí requieren características específicas de PostgreSQL (citext, advisory locks, funciones SQL):
+   - Usar `Testcontainers` con PostgreSQL y un script de inicialización (`src/test/resources/init-postgresql.sql`) que habilite las extensiones necesarias (`citext`, `uuid-ossp`, etc.).
+   - Proveer una clase base `AbstractPostgreSQLTest` (no es nueva: la estrategia ya recomienda este patrón) para centralizar la configuración del contenedor y las propiedades dinámicas.
+3. Mantener `init-h2.sql` y `application-test.properties` actualizados para que H2 en modo `PostgreSQL` siga siendo lo más compatible posible, pero documentar claramente sus limitaciones.
+4. Añadir en la guía de creación de tests un checklist corto para tests que interactúan con la capa de persistencia:
+   - ¿Necesita la prueba `citext`, `uuid-ossp` u otra extensión PG? → Si sí, usar `pgtest` + Testcontainers; si no, H2 es suficiente.
+   - ¿La clase bajo prueba realiza llamadas HTTP externas? → Considerar `WireMock` y no cargar DB si es innecesario.
 
-- Las entidades JPA usan `columnDefinition = "citext"` para columnas case-insensitive (ej: `email`)
-- PostgreSQL en Testcontainers **NO** tiene extensiones habilitadas por defecto
-- Hibernate intenta crear tablas con tipo `citext` pero la extensión no existe
+Tareas sugeridas (pequeñas acciones concretas)
+- Hacer `baseUrl` de `GeminiApiClient` configurable por propiedad para facilitar pruebas con `WireMock`.
+- Documentar en esta estrategia el patrón "HTTP client + WireMock" y agregar un ejemplo breve.
+- Añadir una nota en el apartado de inicialización de la BD sobre `init-postgresql.sql` (ya existe) y su propósito.
 
-#### **Solución: Habilitar Extensiones en Tests**
+Estado: aplicado en código (refactor del test). Recomendado: integrar las recomendaciones anteriores en esta guía para evitar regresiones.
 
-**Paso 1: Crear script de inicialización**
+---
 
-`src/test/resources/init-postgresql.sql`:
+## 📜 **APÉNDICE: DETALLES TÉCNICOS Y SOLUCIÓN DE PROBLEMAS**
 
-```sql
--- ===================================================================
--- POSTGRESQL TESTCONTAINERS INITIALIZATION SCRIPT
--- ===================================================================
--- Este script se ejecuta automáticamente al arrancar el contenedor
+### **1. Problemas Comunes y Soluciones**
 
--- Enable citext extension (case-insensitive text type)
--- Usado en: AppUser.email y otras columnas que requieren búsquedas sin distinción de mayúsculas
-CREATE EXTENSION IF NOT EXISTS citext;
+#### **1.1. Error: `type "citext" does not exist`**
 
--- Enable UUID generation functions
--- Usado en: Entidades con columnas UUID
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+**Causa:**
+- Tipo `citext` no disponible en PostgreSQL por defecto.
+- Usado en entidades para columnas case-insensitive (ej: `email`).
 
--- Verify extensions are installed (opcional, para debugging)
-SELECT extname, extversion FROM pg_extension 
-WHERE extname IN ('citext', 'uuid-ossp')
-ORDER BY extname;
-```
+**Solución:**
+- Habilitar extensión `citext` en PostgreSQL.
+- Agregar script de inicialización en tests que use `Testcontainers`.
 
-**Paso 2: Configurar Testcontainer para usar el script**
+#### **1.2. Error al arrancar contexto: `set client_min_messages = WARNING`**
 
-```java
-@Container
-static PostgreSQLContainer<?> postgres = 
-    new PostgreSQLContainer<>("postgres:16-alpine")
-        .withDatabaseName("testdb")
-        .withUsername("test")
-        .withPassword("test")
-        .withInitScript("init-postgresql.sql");  // ← Ejecuta script al arrancar
-```
+**Causa:**
+- Comando específico de PostgreSQL en el dialecto de Hibernate.
+- No reconocido por H2, causando fallos al iniciar el contexto de Spring.
 
-#### **Patrón Recomendado: Clase Base para Tests PostgreSQL**
+**Solución:**
+- Asegurarse de que los tests que usan H2 no ejecuten comandos SQL no soportados.
+- Usar perfil `pgtest` y `Testcontainers` para tests que requieren características específicas de PostgreSQL.
 
-Para evitar duplicación si tienes múltiples tests con Testcontainers:
+---
 
-**`src/test/java/com/cambiaso/ioc/AbstractPostgreSQLTest.java`:**
+### **2. Configuración de Testcontainers para PostgreSQL**
+
+#### **2.1. Clase Base Recomendada**
+
+**`AbstractPostgreSQLTest.java`:**
 
 ```java
 package com.cambiaso.ioc;
@@ -459,7 +466,33 @@ class AdvisoryLockSerializationTest extends AbstractPostgreSQLTest {
 }
 ```
 
-#### **Configuración de application-pgtest.properties**
+#### **2.2. Script de Inicialización para Testcontainers**
+
+**`src/test/resources/init-postgresql.sql`:**
+
+```sql
+-- ===================================================================
+-- POSTGRESQL TESTCONTAINERS INITIALIZATION SCRIPT
+-- ===================================================================
+-- Este script se ejecuta automáticamente al arrancar el contenedor
+
+-- Enable citext extension (case-insensitive text type)
+-- Usado en: AppUser.email y otras columnas que requieren búsquedas sin distinción de mayúsculas
+CREATE EXTENSION IF NOT EXISTS citext;
+
+-- Enable UUID generation functions
+-- Usado en: Entidades con columnas UUID
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Verify extensions are installed (opcional, para debugging)
+SELECT extname, extversion FROM pg_extension 
+WHERE extname IN ('citext', 'uuid-ossp')
+ORDER BY extname;
+```
+
+---
+
+### **3. Configuración de application-pgtest.properties**
 
 ```properties
 # src/test/resources/application-pgtest.properties
@@ -496,7 +529,9 @@ resilience4j.circuitbreaker.configs.default.failureRateThreshold=100
 resilience4j.circuitbreaker.configs.default.waitDurationInOpenState=1000ms
 ```
 
-#### **Cuándo Usar PostgreSQL (Testcontainers) vs H2**
+---
+
+### **4. Cuándo Usar PostgreSQL (Testcontainers) vs H2**
 
 | Escenario | Base de Datos | Razón |
 |-----------|---------------|-------|
@@ -506,6 +541,72 @@ resilience4j.circuitbreaker.configs.default.waitDurationInOpenState=1000ms
 | **Tests de concurrencia** | PostgreSQL (`AbstractPostgreSQLTest`) | ✅ Comportamiento real |
 | **Tests de SQL nativo con funciones PG** | PostgreSQL (`AbstractPostgreSQLTest`) | ✅ Requiere compatibilidad exacta |
 
-#### **Extensiones PostgreSQL Disponibles para Tests**
+#### **4.1. Extensiones PostgreSQL Disponibles para Tests**
 
-Puedes agregar más extensiones al script `init-postgresql.sql` según necesite
+Puedes agregar más extensiones al script `init-postgresql.sql` según necesites. Algunas extensiones comunes son:
+- `hstore`: tipo de dato para almacenar pares clave-valor.
+- `pg_trgm`: para búsqueda de texto completo y similitud de trigramas.
+- `btree_gist`: para usar índices GiST con tipos de datos de árbol binario.
+
+Asegúrate de que cualquier extensión adicional sea realmente necesaria para los tests y esté documentada en el script de inicialización.
+
+---
+
+### **5. Ejemplo de Configuración de Cliente HTTP con WireMock**
+
+Para tests de integración que requieren simular respuestas de servicios HTTP externos:
+
+**`src/test/java/com/cambiaso/ioc/config/WireMockConfig.java`:**
+
+```java
+package com.cambiaso.ioc.config;
+
+import com.github.tomakehurst.wiremock.junit.WireMockClassRule;
+import org.junit.ClassRule;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
+
+@Configuration
+public class WireMockConfig {
+
+    @ClassRule
+    public static WireMockClassRule wireMockRule = new WireMockClassRule(8089);
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+}
+```
+
+**Uso en un test:**
+
+```java
+@ActiveProfiles("test")
+@SpringBootTest
+public class MyHttpClientTest {
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Test
+    public void testExternalApiCall() {
+        // Configurar WireMock para devolver una respuesta simulada
+        stubFor(get(urlEqualTo("/api/external"))
+            .willReturn(aResponse()
+                .withStatus(200)
+                .withBody("{\"key\":\"value\"}")));
+
+        // Llamar al cliente HTTP
+        String response = restTemplate.getForObject("http://localhost:8089/api/external", String.class);
+
+        // Verificar la respuesta
+        assertThat(response).contains("value");
+    }
+}
+```
+
+**Notas:**
+- Asegúrate de que el puerto de WireMock (8089 en este ejemplo) esté disponible y no sea usado por otros servicios.
+- Configura el `baseUrl` de tus clientes HTTP para que apunten a WireMock en lugar de a los servicios reales durante los tests.

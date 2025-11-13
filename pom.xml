@@ -193,6 +193,14 @@
 			<scope>test</scope>
         </dependency>
 		
+		<!-- WireMock for HTTP mocking in tests -->
+		<dependency>
+			<groupId>org.wiremock</groupId>
+			<artifactId>wiremock-standalone</artifactId>
+			<version>3.3.1</version>
+			<scope>test</scope>
+		</dependency>
+
 		        <!-- JWT Library for Metabase Embedding -->
 		        <dependency>
 		            <groupId>io.jsonwebtoken</groupId>
