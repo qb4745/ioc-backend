@@ -4,6 +4,7 @@ import com.cambiaso.ioc.exception.DashboardNotFoundException;
 import com.cambiaso.ioc.service.NotificationService;
 import com.cambiaso.ioc.service.MetabaseEmbeddingService;
 import com.cambiaso.ioc.service.SupabaseAuthService;
+import com.cambiaso.ioc.service.DashboardAccessService;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -13,6 +14,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doNothing;
 import org.mockito.Mockito;
 
 /**
@@ -58,19 +60,15 @@ public class GlobalTestConfiguration {
 
     @Bean
     @Primary
-    public MetabaseEmbeddingService metabaseEmbeddingService() {
-        // Mock que simula el comportamiento real del servicio:
-        // - Devuelve URL firmada para dashboards válidos (1-10)
-        // - Lanza DashboardNotFoundException para dashboards inválidos
+    public MetabaseEmbeddingService metabaseEmbeddingServiceMock() {
+        // Mock that simulates the behavior of the real service
         MetabaseEmbeddingService svc = mock(MetabaseEmbeddingService.class);
         Mockito.when(svc.getSignedDashboardUrl(Mockito.anyInt(), Mockito.any()))
             .thenAnswer(invocation -> {
                 Integer dashboardId = invocation.getArgument(0);
-                // Simular comportamiento real: dashboards válidos tienen IDs en rango 1-10
                 if (dashboardId != null && dashboardId >= 1 && dashboardId <= 10) {
                     return String.format("http://localhost:3000/embed/dashboard/%s#bordered=true&titled=true", dashboardId);
                 } else {
-                    // Simular excepción del servicio real para dashboards no existentes
                     throw new DashboardNotFoundException(
                         String.format("Dashboard with ID %d is not configured or does not exist.", dashboardId)
                     );
@@ -84,6 +82,18 @@ public class GlobalTestConfiguration {
     public SupabaseAuthService supabaseAuthService() {
         // Mock global de SupabaseAuthService para evitar llamadas externas en tests
         return mock(SupabaseAuthService.class);
+    }
+
+    @Bean
+    @Primary
+    public DashboardAccessService dashboardAccessService() {
+        // Provide a mock DashboardAccessService for tests to avoid instantiating
+        // the real implementation (which depends on MeterRegistry and other beans)
+        DashboardAccessService mock = mock(DashboardAccessService.class);
+        // By default allow access in tests
+        doNothing().when(mock).checkAccessOrThrow(Mockito.any(), Mockito.anyInt());
+        Mockito.when(mock.canAccess(Mockito.any(), Mockito.anyInt())).thenReturn(true);
+        return mock;
     }
 
 }

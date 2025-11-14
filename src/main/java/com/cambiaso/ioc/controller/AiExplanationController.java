@@ -6,6 +6,8 @@ import com.cambiaso.ioc.exception.GeminiApiException;
 import com.cambiaso.ioc.exception.GeminiRateLimitException;
 import com.cambiaso.ioc.exception.GeminiTimeoutException;
 import com.cambiaso.ioc.service.ai.DashboardExplanationService;
+import com.cambiaso.ioc.service.DashboardAccessService;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -20,6 +22,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Map;
 
@@ -53,6 +56,7 @@ import java.util.Map;
 public class AiExplanationController {
 
     private final DashboardExplanationService explanationService;
+    private final DashboardAccessService dashboardAccessService;
 
     /**
      * Genera explicación ejecutiva de un dashboard usando IA (POST con body JSON).
@@ -69,7 +73,7 @@ public class AiExplanationController {
      * @param authentication Usuario autenticado (inyectado por Spring Security)
      * @return Respuesta con resumen ejecutivo, key points, insights y alertas
      */
-    @PostMapping("/explain")
+    @PostMapping(path = {"/explain", "/explain-dashboard"})
     @RateLimiter(name = "aiExplanation")
     public ResponseEntity<DashboardExplanationResponse> explainDashboard(
             @Valid @RequestBody DashboardExplanationRequest request,
@@ -80,6 +84,9 @@ public class AiExplanationController {
             request.dashboardId(),
             request.fechaInicio(),
             request.fechaFin());
+
+        // R4: Verificar acceso al dashboard antes de procesar
+        dashboardAccessService.checkAccessOrThrow(authentication, request.dashboardId());
 
         try {
             DashboardExplanationResponse response = explanationService.explainDashboard(request);
@@ -304,5 +311,31 @@ public class AiExplanationController {
             "message", "Required parameter '" + ex.getParameterName() + "' is missing",
             "timestamp", java.time.Instant.now()
         ));
+    }
+
+    /**
+     * Maneja rechazos del RateLimiter (Resilience4j) y los mapea a 429.
+     */
+    @ExceptionHandler(RequestNotPermitted.class)
+    public ResponseEntity<com.cambiaso.ioc.dto.ai.DashboardExplanationResponse> handleRateLimiter(RequestNotPermitted ex) {
+        log.warn("Rate limiter rejected request: {}", ex.getMessage());
+
+        com.cambiaso.ioc.dto.ai.DashboardExplanationResponse resp = new com.cambiaso.ioc.dto.ai.DashboardExplanationResponse(
+            "Rate limit exceeded - please wait",
+            java.util.List.of(),
+            java.util.List.of(),
+            java.util.List.of("Error: Rate limit exceeded - please wait"),
+            0,
+            "UNKNOWN",
+            java.time.LocalDate.now(),
+            java.time.LocalDate.now(),
+            java.util.Map.of(),
+            Instant.now(),
+            false,
+            0,
+            300
+        );
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(resp);
     }
 }

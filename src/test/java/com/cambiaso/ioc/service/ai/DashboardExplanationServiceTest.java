@@ -52,9 +52,13 @@ class DashboardExplanationServiceTest extends AbstractIntegrationTest {
 
     @BeforeEach
     void setup() {
-        // Limpiar cache antes de cada test
-        if (cacheManager.getCache("aiExplanations") != null) {
-            cacheManager.getCache("aiExplanations").clear();
+        // Limpiar caches relevantes antes de cada test
+        // Clear both historical and current caches used by the service
+        if (cacheManager.getCache("aiExplanationsHistorical") != null) {
+            cacheManager.getCache("aiExplanationsHistorical").clear();
+        }
+        if (cacheManager.getCache("aiExplanationsCurrent") != null) {
+            cacheManager.getCache("aiExplanationsCurrent").clear();
         }
     }
 

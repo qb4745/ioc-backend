@@ -7,6 +7,7 @@ import com.cambiaso.ioc.exception.GeminiApiException;
 import com.cambiaso.ioc.exception.GeminiRateLimitException;
 import com.cambiaso.ioc.exception.GeminiTimeoutException;
 import com.cambiaso.ioc.service.ai.DashboardExplanationService;
+import com.cambiaso.ioc.service.DashboardAccessService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +60,13 @@ class AiExplanationControllerTest extends AbstractIntegrationTest {
      */
     @MockBean
     private DashboardExplanationService explanationService;
+
+    /**
+     * MockBean para verificación de acceso a dashboards (R4)
+     * Se mockea para permitir acceso en tests sin configurar metabase.dashboards
+     */
+    @MockBean
+    private DashboardAccessService dashboardAccessService;
 
     @Test
     @WithMockUser(username = "testuser", roles = {"USER"})

@@ -102,7 +102,10 @@ public class MetabaseEmbeddingService {
     @SuppressWarnings("unused")
     private String getSignedDashboardUrlFallback(int dashboardId, Authentication authentication, Exception ex) {
         log.error("Circuit breaker activated for dashboard {}. Metabase may be down.", dashboardId, ex);
-        meterRegistry.counter("metabase.dashboard.access", "dashboard", String.valueOf(dashboardId), "user", authentication.getName(), "status", "circuit_open").increment();
+        String username = (authentication != null && authentication.getName() != null) ? authentication.getName() : "unknown";
+        if (meterRegistry != null) {
+            meterRegistry.counter("metabase.dashboard.access", "dashboard", String.valueOf(dashboardId), "user", username, "status", "circuit_open").increment();
+        }
         throw new RuntimeException("Dashboard service is temporarily unavailable. Please try again in a few moments.", ex);
     }
 

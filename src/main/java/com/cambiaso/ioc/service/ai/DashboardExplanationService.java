@@ -60,8 +60,11 @@ public class DashboardExplanationService {
     @Value("${ai.explanation.send-pii:false}")
     private boolean sendPiiToGemini;
 
-    @Value("${ai.explanation.cache-name:aiExplanations}")
-    private String cacheName;
+    @Value("${ai.explanation.cache-name-historical:aiExplanationsHistorical}")
+    private String cacheNameHistorical;
+
+    @Value("${ai.explanation.cache-name-current:aiExplanationsCurrent}")
+    private String cacheNameCurrent;
 
     /**
      * Record interno para agrupar datos analíticos.
@@ -100,16 +103,18 @@ public class DashboardExplanationService {
         log.info("Starting AI explanation generation for dashboard: {}, range: {} to {}",
             request.dashboardId(), request.fechaInicio(), request.fechaFin());
 
+
         try {
-            // FASE 1: Verificar cache
+            // FASE 1: Verificar cache (seleccionar caché según si es histórico o actual)
             String cacheKey = buildCacheKey(request);
+            String cacheName = selectCacheName(request.fechaFin());
             Cache cache = cacheManager.getCache(cacheName);
 
             if (cache != null) {
                 Cache.ValueWrapper cached = cache.get(cacheKey);
                 if (cached != null) {
-                    log.info("Cache HIT for key: {}", cacheKey);
-                    meterRegistry.counter("ai.explanation.cache", "result", "hit").increment();
+                    log.info("Cache HIT for key: {} (cache: {})", cacheKey, cacheName);
+                    meterRegistry.counter("ai.explanation.cache", "result", "hit", "type", cacheName).increment();
 
                     DashboardExplanationResponse response = (DashboardExplanationResponse) cached.get();
                     timerSample.stop(Timer.builder("ai.explanation.duration")
@@ -121,8 +126,8 @@ public class DashboardExplanationService {
                 }
             }
 
-            log.info("Cache MISS - Starting data aggregation and AI generation");
-            meterRegistry.counter("ai.explanation.cache", "result", "miss").increment();
+            log.info("Cache MISS - Starting data aggregation and AI generation (cache: {})", cacheName);
+            meterRegistry.counter("ai.explanation.cache", "result", "miss", "type", cacheName).increment();
 
             // FASE 2: Consultar datos agregados
             long queryStart = System.currentTimeMillis();
@@ -555,6 +560,22 @@ public class DashboardExplanationService {
             request.fechaFin(),
             filtersHash
         );
+    }
+
+    /**
+     * Selecciona la caché apropiada según si los datos son históricos o actuales.
+     *
+     * @param fechaFin Fecha final del rango de datos
+     * @return Nombre de la caché a usar (histórico o actual)
+     */
+    private String selectCacheName(LocalDate fechaFin) {
+        LocalDate today = LocalDate.now();
+
+        if (fechaFin.isBefore(today)) {
+            return cacheNameHistorical; // 24 horas
+        } else {
+            return cacheNameCurrent; // 30 minutos
+        }
     }
 
     private String hashFiltros(Map<String, String> filtros) {
