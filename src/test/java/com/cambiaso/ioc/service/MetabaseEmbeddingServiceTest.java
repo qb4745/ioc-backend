@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.CacheManager;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
@@ -27,6 +28,9 @@ class MetabaseEmbeddingServiceTest {
 
     @Mock
     private Authentication authentication;
+
+    @Mock
+    private CacheManager cacheManager;
 
     private MetabaseEmbeddingService service;
     private MetabaseProperties properties;
@@ -50,7 +54,8 @@ class MetabaseEmbeddingServiceTest {
         service = new MetabaseEmbeddingService(
             properties, 
             auditService, 
-            new SimpleMeterRegistry()
+            new SimpleMeterRegistry(),
+            cacheManager
         );
     }
 
@@ -106,7 +111,7 @@ class MetabaseEmbeddingServiceTest {
         invalidProps.setSecretKey("tooshort");
 
         // When & Then
-        assertThatThrownBy(() -> new MetabaseEmbeddingService(invalidProps, auditService, new SimpleMeterRegistry()))
+        assertThatThrownBy(() -> new MetabaseEmbeddingService(invalidProps, auditService, new SimpleMeterRegistry(), cacheManager))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("too short");
     }
@@ -120,7 +125,7 @@ class MetabaseEmbeddingServiceTest {
         invalidProps.setSecretKey("1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdeg");
 
         // When & Then
-        assertThatThrownBy(() -> new MetabaseEmbeddingService(invalidProps, auditService, new SimpleMeterRegistry()))
+        assertThatThrownBy(() -> new MetabaseEmbeddingService(invalidProps, auditService, new SimpleMeterRegistry(), cacheManager))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("must be hexadecimal");
     }

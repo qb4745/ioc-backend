@@ -10,6 +10,9 @@ import io.jsonwebtoken.security.Keys;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -29,16 +32,19 @@ public class MetabaseEmbeddingService {
     private final SecretKey key;
     private final DashboardAuditService auditService;
     private final MeterRegistry meterRegistry;
+    private final CacheManager cacheManager;
 
     public MetabaseEmbeddingService(
             MetabaseProperties properties,
             DashboardAuditService auditService,
-            MeterRegistry meterRegistry
+            MeterRegistry meterRegistry,
+            CacheManager cacheManager
     ) {
         this.properties = properties;
         this.auditService = auditService;
         this.meterRegistry = meterRegistry;
-        
+        this.cacheManager = cacheManager;
+
         validateSecretKey(properties.getSecretKey());
         
         this.key = Keys.hmacShaKeyFor(
@@ -85,8 +91,8 @@ public class MetabaseEmbeddingService {
                 properties.getSiteUrl(), token);
             
             meterRegistry.counter("metabase.dashboard.access", "dashboard", String.valueOf(dashboardId), "user", authentication.getName(), "status", "success").increment();
-            log.debug("Generated signed URL for dashboard {} for user {}", dashboardId, authentication.getName());
-            
+            log.debug("Generated new signed URL for dashboard {} for user {} (cache miss or expired)", dashboardId, authentication.getName());
+
             return url;
             
         } catch (DashboardAccessDeniedException | DashboardNotFoundException e) {
@@ -97,6 +103,36 @@ public class MetabaseEmbeddingService {
         } finally {
             sample.stop(Timer.builder("metabase.dashboard.request.duration").tag("dashboard", String.valueOf(dashboardId)).register(meterRegistry));
         }
+    }
+
+    /**
+     * Invalida todos los tokens en cache de un usuario específico.
+     * Útil cuando el usuario cierra sesión o sus permisos cambian.
+     *
+     * @param username nombre del usuario cuyo cache se debe invalidar
+     */
+    public void invalidateUserTokens(String username) {
+        Cache cache = cacheManager.getCache("dashboardTokens");
+        if (cache != null) {
+            // Nota: Caffeine no soporta invalidación por patrón directamente
+            // Esta es una implementación básica que invalida todo el cache
+            // Para invalidación selectiva, considerar usar cache keys con prefijos
+            cache.invalidate();
+            log.info("Invalidated dashboard tokens cache for all users (logout/permission change)");
+            meterRegistry.counter("metabase.cache.invalidation", "reason", "user_logout", "user", username).increment();
+        }
+    }
+
+    /**
+     * Invalida el token en cache para un usuario y dashboard específicos.
+     *
+     * @param username nombre del usuario
+     * @param dashboardId ID del dashboard
+     */
+    @CacheEvict(value = "dashboardTokens", key = "#username + '_' + #dashboardId")
+    public void invalidateUserDashboardToken(String username, int dashboardId) {
+        log.debug("Invalidated dashboard token cache for user {} and dashboard {}", username, dashboardId);
+        meterRegistry.counter("metabase.cache.invalidation", "reason", "manual", "user", username, "dashboard", String.valueOf(dashboardId)).increment();
     }
 
     @SuppressWarnings("unused")

@@ -14,9 +14,11 @@ import java.util.concurrent.TimeUnit;
 public class CacheConfig {
 
     /**
-     * CacheManager con configuración de múltiples cachés para AI Explanations.
+     * CacheManager con configuración de múltiples cachés.
      * - aiExplanationsHistorical: 24 horas (datos históricos)
      * - aiExplanationsCurrent: 30 minutos (datos actuales/futuros)
+     * - dashboardAccess: 60 segundos (decisiones de autorización)
+     * - dashboardTokens: 8 minutos (tokens JWT de Metabase)
      */
     @Bean
     public CacheManager cacheManager() {
@@ -44,6 +46,16 @@ public class CacheConfig {
             Caffeine.newBuilder()
                 .maximumSize(1000)
                 .expireAfterWrite(60, TimeUnit.SECONDS)
+                .recordStats()
+                .build());
+
+        // Cache para tokens JWT de Metabase (8 minutos)
+        // TTL menor que la expiración del JWT (10 min) para evitar servir tokens expirados
+        // Política: Regenerar token 2 minutos antes de la expiración para evitar race conditions
+        cacheManager.registerCustomCache("dashboardTokens",
+            Caffeine.newBuilder()
+                .maximumSize(1000)
+                .expireAfterWrite(8, TimeUnit.MINUTES)
                 .recordStats()
                 .build());
 

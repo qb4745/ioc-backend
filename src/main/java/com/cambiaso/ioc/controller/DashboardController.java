@@ -1,5 +1,6 @@
 package com.cambiaso.ioc.controller;
 
+import com.cambiaso.ioc.config.MetabaseProperties;
 import com.cambiaso.ioc.service.MetabaseEmbeddingService;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class DashboardController {
 
     private final MetabaseEmbeddingService embeddingService;
+    private final MetabaseProperties metabaseProperties;
 
     /**
      * Obtiene una URL firmada para incrustar un dashboard de Metabase.
@@ -45,7 +47,7 @@ public class DashboardController {
         
         return ResponseEntity.ok(Map.of(
             "signedUrl", signedUrl,
-            "expiresInMinutes", 10, // Debería coincidir con la config
+            "expiresInMinutes", metabaseProperties.getTokenExpirationMinutes(),
             "dashboardId", dashboardId
         ));
     }
