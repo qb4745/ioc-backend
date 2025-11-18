@@ -1,0 +1,291 @@
+{
+  "repo_notes": [
+    {
+      "content": ""
+    }
+  ],
+  "pages": [
+    {
+      "title": "Descripción General",
+      "purpose": "Introducir el repositorio IOC-Backend, explicando su propósito como la API backend para 'Inteligencia Operacional Cambiaso', su stack tecnológico (Spring Boot 3.5.5, Java 21, PostgreSQL), y la arquitectura de alto nivel",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Primeros Pasos",
+      "purpose": "Guiar a los desarrolladores a través de la configuración, construcción y ejecución de la aplicación por primera vez",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Prerrequisitos y Configuración del Entorno",
+      "purpose": "Detallar el software requerido (Java 21, variables de entorno como SUPABASE_DB_PASSWORD), requisitos del sistema, y configuración inicial del entorno",
+      "parent": "Primeros Pasos",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Construcción con Maven Wrapper",
+      "purpose": "Explicar cómo usar Maven Wrapper (mvnw/mvnw.cmd) para construir el proyecto, incluyendo cómo asegura la consistencia de Maven 3.9.11 entre entornos",
+      "parent": "Primeros Pasos",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Ejecutar la Aplicación Localmente",
+      "purpose": "Guía paso a paso para ejecutar la aplicación Spring Boot localmente, incluyendo la configuración de sobreescrituras de configuración local y variables de entorno",
+      "parent": "Primeros Pasos",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuración Principal (application.properties)",
+      "purpose": "Documentación exhaustiva del archivo application.properties, el componente de configuración más crítico que controla la conectividad de la base de datos, el comportamiento de JPA/Hibernate, y el pool de conexiones",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuración de Conexión a Base de Datos",
+      "purpose": "Explicación detallada de las propiedades spring.datasource.* incluyendo la URL del Connection Pooler de Supabase, credenciales de autenticación, y cómo funciona la inyección de variables de entorno para contraseñas",
+      "parent": "Configuración Principal (application.properties)",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuración de JPA e Hibernate",
+      "purpose": "Análisis profundo de las configuraciones spring.jpa.* incluyendo logging de SQL (show-sql), estrategia de gestión de esquema (ddl-auto=update), estrategia de nomenclatura física (preservación de camelCase), y sus implicancias para desarrollo versus producción",
+      "parent": "Configuración Principal (application.properties)",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Gestión de Transacciones y Sesiones",
+      "purpose": "Explicar la configuración spring.jpa.open-in-view=false, por qué está deshabilitada, cómo afecta los límites de transacción, y mejores prácticas para evitar LazyInitializationException",
+      "parent": "Configuración Principal (application.properties)",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuración Específica por Entorno",
+      "purpose": "Documentar cómo usar application-local.properties para sobreescrituras locales, explicar la jerarquía de configuración, y detallar prácticas de seguridad para gestionar credenciales sensibles",
+      "parent": "Configuración Principal (application.properties)",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Arquitectura de la Aplicación",
+      "purpose": "Describir la estructura general de la aplicación Spring Boot, capas de componentes, mecanismos de auto-configuración, y cómo se inicializa la aplicación",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Estructura de la Aplicación Spring Boot",
+      "purpose": "Explicar la anotación @SpringBootApplication, sus meta-anotaciones compuestas (@Configuration, @EnableAutoConfiguration, @ComponentScan), y la arquitectura estándar de capas (Web, Security, Validation, Business, Data)",
+      "parent": "Arquitectura de la Aplicación",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Punto de Entrada y Bootstrap de la Aplicación",
+      "purpose": "Detallar la clase IocbackendApplication, el método main(), el flujo de ejecución de SpringApplication.run(), y la secuencia de inicialización del contexto de aplicación",
+      "parent": "Arquitectura de la Aplicación",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Dependencias y Spring Boot Starters",
+      "purpose": "Documentar los starters y dependencias de Spring Boot en pom.xml (web, data-jpa, security, validation), sus propósitos, y cómo habilitan la auto-configuración",
+      "parent": "Arquitectura de la Aplicación",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Capa de Persistencia de Datos",
+      "purpose": "Documentar cómo la aplicación persiste datos usando JPA/Hibernate con PostgreSQL, incluyendo gestión de conexiones y estrategias de esquema",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Integración con PostgreSQL de Supabase",
+      "purpose": "Explicar la arquitectura del Connection Pooler de Supabase, cómo optimiza las conexiones a la base de datos, el formato de URL de conexión, y autenticación específica del proyecto",
+      "parent": "Capa de Persistencia de Datos",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Estrategia de Gestión de Esquema",
+      "purpose": "Detallar la configuración hibernate.ddl-auto=update, cómo sincroniza automáticamente los modelos de entidad con el esquema de la base de datos, sus beneficios para desarrollo, y por qué es riesgoso para producción",
+      "parent": "Capa de Persistencia de Datos",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Estrategia de Nomenclatura Física",
+      "purpose": "Explicar PhysicalNamingStrategyStandardImpl, cómo preserva los nombres de campos en camelCase en las columnas de la base de datos, comparación con SpringPhysicalNamingStrategy, e implicancias para el diseño del esquema de la base de datos",
+      "parent": "Capa de Persistencia de Datos",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Sistema de Construcción",
+      "purpose": "Documentar el sistema de construcción basado en Maven, incluyendo configuración del proyecto, gestión de dependencias, y el mecanismo de Maven Wrapper",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuración del Proyecto Maven (pom.xml)",
+      "purpose": "Documentación exhaustiva de pom.xml incluyendo metadatos del proyecto, herencia de POM padre, declaraciones de dependencias (scopes runtime/optional/test), y plugins de construcción (compiler, spring-boot)",
+      "parent": "Sistema de Construcción",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Sistema Maven Wrapper",
+      "purpose": "Explicar el propósito de Maven Wrapper (asegurar consistencia de Maven 3.9.11), cómo funciona (scripts mvnw/mvnw.cmd, maven-wrapper.properties), descarga de distribución, caché, y soporte multiplataforma",
+      "parent": "Sistema de Construcción",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Ciclo de Vida de Construcción y Empaquetado",
+      "purpose": "Documentar las fases de construcción de Maven (compile, test, package), procesamiento de anotaciones de Lombok, generación de JAR ejecutable mediante spring-boot-maven-plugin, y ubicaciones de artefactos de construcción (directorio target/)",
+      "parent": "Sistema de Construcción",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Testing",
+      "purpose": "Documentar la estrategia de testing, infraestructura de pruebas, y cómo ejecutar las pruebas",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Pruebas de Integración",
+      "purpose": "Explicar la clase IocbackendApplicationTests, la anotación @SpringBootTest, verificación de carga de contexto, y cómo valida la configuración fundamental de la aplicación",
+      "parent": "Testing",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuración y Dependencias de Pruebas",
+      "purpose": "Documentar dependencias con scope de test (spring-boot-starter-test, spring-security-test), ejecución de pruebas con Maven, y mejores prácticas de testing",
+      "parent": "Testing",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Flujo de Trabajo de Desarrollo",
+      "purpose": "Guiar a los desarrolladores a través del flujo de trabajo diario de desarrollo, configuración de IDE, y prácticas de control de versiones",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuración de IDE",
+      "purpose": "Explicar el soporte multi-IDE (IntelliJ, Eclipse/STS, VS Code, NetBeans), cómo .gitignore excluye archivos específicos del IDE, y configuraciones recomendadas de IDE para desarrollo Spring Boot",
+      "parent": "Flujo de Trabajo de Desarrollo",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Configuración de Control de Versiones",
+      "purpose": "Documentar reglas de .gitignore (excluyendo artefactos de construcción, logs, configs locales, archivos de IDE) y configuraciones de .gitattributes (normalización de fin de línea para scripts mvnw), explicando la justificación de seguridad y colaboración",
+      "parent": "Flujo de Trabajo de Desarrollo",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Mejores Prácticas de Desarrollo Local",
+      "purpose": "Proporcionar mejores prácticas para desarrollo local incluyendo el uso de application-local.properties, gestión de variables de entorno, entender qué archivos nunca commitear, y flujos de trabajo de desarrollo comunes",
+      "parent": "Flujo de Trabajo de Desarrollo",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}
