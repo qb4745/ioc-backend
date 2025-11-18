@@ -1,0 +1,103 @@
+Instrucciones Informe Final Proyecto APT
+
+Esta es una evaluación que corresponde a una entrega de encargo con presentación y tiene un 30% de ponderación sobre la nota final de la asignatura. El encargo a entregar corresponde al informe final del Proyecto APT.
+
+El tiempo para desarrollar esta evaluación es de todas las semanas previas a la presentación, semana 15, el grupo cuenta con 20 minutos para su presentación en el taller de proyecto. 
+
+
+
+ Tu informe debe contener: 
+
+Metodología implementada que permita el logro de los objetivos propuestos. 
+Evidencias que dan cuenta del cumplimiento del proyecto 
+Descripción del aporte del proyecto en el desarrollo de sus intereses profesionales. 
+Competencias del perfil de egreso evidenciadas en el desarrollo de su proyecto. 
+ Además, debe cumplir con: 
+
+Los indicadores de calidad requeridos en la presentación del diseño del proyecto APT. 
+Aspectos formales:  
+
+Respeta las reglas de redacción y ortografía.  
+Utilización precisa de lenguaje técnico de acuerdo a lo requerido por la disciplina. 
+Formato informe técnico: Portada, índice, abstract, desarrollo de ingeniería, conclusiones y reflexiones individuales. 
+Presentación:  
+
+Utilizar un lenguaje que responda al contexto formal, y exponer simulando la presentación a una gerencia de proyecto (comisión evaluadora). 
+La evaluación se realiza de forma grupal, pero la calificación es de carácter individual. 
+
+La siguiente pauta será aplicada por e/la docente de la asignatura para evaluar el informe final del Proyecto APT y te entregará retroalimentación sobre tu trabajo para que puedas identificar las fortalezas y aspectos por mejorar para la presentación a la comisión.  
+
+CAPSTONE_007V
+Fase 2 (30%) - Informe final Proyecto APT
+La entrega final del Proyecto APT será evaluada en base a los siguientes indicadores:
+
+
+
+INDICADOR DE EVALUACIÓN
+PONDERACIÓN
+1) Implementa una metodología que permite el logro de los objetivos propuestos, de acuerdo a los estándares de la disciplina.
+
+10%
+
+2) Genera evidencias que dan cuenta del cumplimiento del Proyecto CAPSTONE, en relación a documentación, programación y almacenamiento de datos, de acuerdo a lo planificado por el equipo y que cumpla con estándares de desarrollo de la industria.
+
+20%
+
+3) Relaciona el Proyecto APT con sus intereses profesionales. *
+
+5%
+
+4) Relaciona el Proyecto APT con las competencias del perfil de egreso de su Plan de Estudio.
+
+5%
+
+5) Utiliza de manera precisa el lenguaje técnico en los entregables de acuerdo con lo requerido por la disciplina.
+
+5%
+
+6) Utiliza correctamente las reglas de redacción, ortografía (literal, puntual, acentual) y las normas para citas y referencias. 
+
+5%
+
+7) Entrega la documentación y evidencias requerida por la asignatura de acuerdo a la estructura y nombres solicitados, guardando todas las evidencias de avances en Git.
+
+15%
+
+8) Expone el tema utilizando un lenguaje técnico disciplinar al presentar la propuesta y responde evidenciando un manejo de la información. *
+
+10%
+
+9) Generan evidencias claras dentro del repositorio del aporte de cada uno de los integrantes del equipo que permitan identificar la equidad en el trabajo y la participación de cada estudiante.
+
+15%
+
+10) Colaboración y trabajo en equipo. *
+
+10%
+
+
+
+Los estándares disciplinarios vinculados a las competencias del Perfil de Egreso que se desarrolla en cada proyecto y que serán evaluados en esta instancia son: 
+
+
+
+COMPETENCIAS PERFIL DE EGRESO
+INDICADORES DE CALIDAD
+Realizar pruebas de certificación tanto de los productos como de los procesos utilizando buenas prácticas definidas por la industria. 
+
+ Diseña pruebas de validación tanto de los productos como de los procesos utilizando buenas prácticas definidas por la industria.
+Aplica Pruebas de validación tanto de los productos como de los procesos utilizando buenas prácticas definidas por la industria.
+Desarrolla mejoras al producto en base al resultado de las mismas. 
+Gestionar proyectos informáticos, ofreciendo alternativas para la toma de decisiones de acuerdo a los requerimientos de la organización.
+
+Planifica proyectos informáticos, ofreciendo alternativas para la toma de decisiones de acuerdo a los requerimientos de la organización
+Controla proyectos informáticos, ofreciendo alternativas para la toma de decisiones de acuerdo a los requerimientos de la organización.
+Construir modelos de datos para soportar los requerimientos de la organización de acuerdo a un diseño definido y escalable en el tiempo. 
+
+Diseña modelos de datos para soportar los requerimientos de la organización de acuerdo a un diseño definido y escalable en el tiempo.
+Implementa modelos de datos para soportar los requerimientos de la organización de acuerdo a un diseño definido y escalable en el tiempo.
+Desarrollar una solución de software utilizando técnicas que permitan sistematizar el proceso de desarrollo y mantenimiento, asegurando el logro de los objetivos. 
+
+Construye una solución de software utilizando técnicas que permitan sistematizar el proceso de desarrollo y mantenimiento, asegurando el logro de los objetivos. 
+Integra los distintos componentes de una solución de software utilizando técnicas que permitan sistematizar el proceso de desarrollo y mantenimiento, asegurando el logro de los objetivos.
+Implanta una solución de software utilizando técnicas que permitan sistematizar el proceso de desarrollo y mantenimiento, asegurando el logro de los objetivos.
