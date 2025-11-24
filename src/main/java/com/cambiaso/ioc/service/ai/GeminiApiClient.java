@@ -37,7 +37,7 @@ public class GeminiApiClient {
     @Value("${gemini.api-key}")
     private String apiKey;
 
-    @Value("${gemini.model:gemini-1.5-flash}")
+    @Value("${gemini.model:gemini-2.0-flash}")
     private String model;
 
     @Value("${gemini.timeout.seconds:90}")
@@ -47,10 +47,10 @@ public class GeminiApiClient {
     private int maxRetryAttempts;
 
     @Value("${gemini.retry.backoff.initial:500}")
-    private long initialBackoffMs;
+    private int initialBackoffMs;
 
-    @Value("${gemini.retry.backoff.max:1500}")
-    private long maxBackoffMs;
+    @Value("${gemini.retry.backoff.max:2000}")
+    private int maxBackoffMs;
 
     @Value("${gemini.base-url:https://generativelanguage.googleapis.com}")
     private String baseUrl;
@@ -59,12 +59,13 @@ public class GeminiApiClient {
      * Invoca la API de Gemini con el prompt completo.
      *
      * Timeout total: 90 segundos (connect 5s + read 85s)
-     * Retries: Máximo 2 intentos con backoff exponencial (500ms inicial, 1500ms máximo)
+     * Retries: Máximo 2 intentos con backoff exponencial (500ms inicial, 1500ms
+     * máximo)
      *
      * @param prompt Prompt completo (system + context + data + instructions)
      * @return Texto de respuesta extraído del JSON de Gemini
-     * @throws GeminiApiException si falla después de todos los retries
-     * @throws GeminiTimeoutException si excede el timeout de 90s
+     * @throws GeminiApiException       si falla después de todos los retries
+     * @throws GeminiTimeoutException   si excede el timeout de 90s
      * @throws GeminiRateLimitException si API retorna 429
      */
     public String callGemini(String prompt) {
@@ -72,8 +73,9 @@ public class GeminiApiClient {
             throw new IllegalArgumentException("Prompt cannot be null or empty");
         }
 
-        log.debug("Calling Gemini API - Prompt length: {} chars, estimated tokens: {}",
+        log.info("Calling Gemini API - Prompt length: {} chars, estimated tokens: {}",
                 prompt.length(), estimateTokens(prompt));
+        log.info("FULL PROMPT:\n{}", prompt);
 
         WebClient client = webClientBuilder
                 .baseUrl(baseUrl)
@@ -86,7 +88,7 @@ public class GeminiApiClient {
             long startTime = System.currentTimeMillis();
 
             String response = client.post()
-                    .uri("/v1/models/{model}:generateContent?key={apiKey}", model, apiKey)
+                    .uri("/v1beta/models/{model}:generateContent?key={apiKey}", model, apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
                     .retrieve()
@@ -98,23 +100,17 @@ public class GeminiApiClient {
                                     return Mono.error(new GeminiRateLimitException("API rate limit exceeded"));
                                 }
                                 return Mono.error(new GeminiApiException("Client error: " + status));
-                            }
-                    )
+                            })
                     .bodyToMono(String.class)
                     .timeout(Duration.ofSeconds(timeoutSeconds))
                     .retryWhen(Retry.backoff(maxRetryAttempts, Duration.ofMillis(initialBackoffMs))
                             .maxBackoff(Duration.ofMillis(maxBackoffMs))
-                            .filter(throwable ->
-                                    throwable instanceof WebClientResponseException.ServiceUnavailable
-                                            || throwable instanceof java.net.ConnectException
-                            )
-                            .doBeforeRetry(retrySignal ->
-                                    log.warn("Retrying Gemini API call (attempt {}/{}): {}",
-                                            retrySignal.totalRetries() + 1,
-                                            maxRetryAttempts,
-                                            retrySignal.failure().getMessage())
-                            )
-                    )
+                            .filter(throwable -> throwable instanceof WebClientResponseException.ServiceUnavailable
+                                    || throwable instanceof java.net.ConnectException)
+                            .doBeforeRetry(retrySignal -> log.warn("Retrying Gemini API call (attempt {}/{}): {}",
+                                    retrySignal.totalRetries() + 1,
+                                    maxRetryAttempts,
+                                    retrySignal.failure().getMessage())))
                     .block();
 
             long duration = System.currentTimeMillis() - startTime;
@@ -128,7 +124,8 @@ public class GeminiApiClient {
         } catch (GeminiApiException e) {
             throw e; // Re-throw custom exceptions
         } catch (RuntimeException e) {
-            // Reactor / WebClient timeouts and related issues surface as runtime exceptions.
+            // Reactor / WebClient timeouts and related issues surface as runtime
+            // exceptions.
             // Detect timeout-like failures and wrap them in GeminiTimeoutException.
             String className = e.getClass().getName();
             String message = e.getMessage() != null ? e.getMessage() : "";
@@ -260,12 +257,12 @@ public class GeminiApiClient {
             return "";
         }
 
-        return text.replace("\\", "\\\\")    // Backslash primero
-                .replace("\"", "\\\"")     // Comillas
-                .replace("\n", "\\n")      // Newline
-                .replace("\r", "\\r")      // Carriage return
-                .replace("\t", "\\t")      // Tab
-                .replace("\b", "\\b")      // Backspace
-                .replace("\f", "\\f");     // Form feed
+        return text.replace("\\", "\\\\") // Backslash primero
+                .replace("\"", "\\\"") // Comillas
+                .replace("\n", "\\n") // Newline
+                .replace("\r", "\\r") // Carriage return
+                .replace("\t", "\\t") // Tab
+                .replace("\b", "\\b") // Backspace
+                .replace("\f", "\\f"); // Form feed
     }
 }
