@@ -13,16 +13,20 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Configuration
 public class PageableConfig implements WebMvcConfigurer {
 
     @Override
-    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+    public void addArgumentResolvers(@NonNull List<HandlerMethodArgumentResolver> resolvers) {
         resolvers.add(new CustomPageableHandlerMethodArgumentResolver());
     }
 
@@ -37,36 +41,41 @@ public class PageableConfig implements WebMvcConfigurer {
         }
 
         @Override
-        public Pageable resolveArgument(MethodParameter methodParameter,
-                                       ModelAndViewContainer mavContainer,
-                                       NativeWebRequest webRequest,
-                                       WebDataBinderFactory binderFactory) {
+        public @NonNull Pageable resolveArgument(@NonNull MethodParameter methodParameter,
+                                                 @Nullable ModelAndViewContainer mavContainer,
+                                                 @NonNull NativeWebRequest webRequest,
+                                                 @Nullable WebDataBinderFactory binderFactory) {
 
             String sortParam = webRequest.getParameter("sort");
 
             // Handle JSON array format: ["name,asc"] or ["name","asc"]
-            if (sortParam != null && !sortParam.isEmpty() && sortParam.startsWith("[") && sortParam.endsWith("]")) {
-                try {
-                    // Parse the JSON array
-                    String[] sortArray = objectMapper.readValue(sortParam, String[].class);
-
-                    if (sortArray != null && sortArray.length > 0) {
+            if (sortParam != null) {
+                String sp = sortParam.trim();
+                if (sp.startsWith("[") && sp.endsWith("]")) {
+                 try {
+                    // Parse JSON safely into a JsonNode and validate elements
+                    JsonNode root = objectMapper.readTree(sp);
+                    if (root != null && root.isArray() && root.size() > 0) {
                         List<Sort.Order> orders = new ArrayList<>();
 
-                        for (String sortStr : sortArray) {
-                            if (sortStr != null && !sortStr.isEmpty()) {
-                                String[] parts = sortStr.split(",");
-                                if (parts.length >= 1) {
-                                    String property = parts[0].trim();
-                                    if (!property.isEmpty()) {
-                                        Sort.Direction direction = parts.length > 1 &&
-                                            "desc".equalsIgnoreCase(parts[1].trim())
-                                            ? Sort.Direction.DESC
-                                            : Sort.Direction.ASC;
-                                        orders.add(new Sort.Order(direction, property));
-                                    }
-                                }
-                            }
+                        // allow alphanumeric, dot, underscore and dash in property names
+                        Pattern propertyPattern = Pattern.compile("^[A-Za-z0-9_.-]+$");
+
+                        for (JsonNode node : root) {
+                            String sortStr = node.isTextual() ? node.textValue() : null;
+                            if (sortStr == null || sortStr.isEmpty()) continue;
+
+                            String[] parts = sortStr.split(",");
+                            if (parts.length < 1) continue;
+
+                            String property = parts[0].trim();
+                            if (property.isEmpty() || !propertyPattern.matcher(property).matches()) continue;
+
+                            Sort.Direction direction = parts.length > 1 && "desc".equalsIgnoreCase(parts[1].trim())
+                                ? Sort.Direction.DESC
+                                : Sort.Direction.ASC;
+
+                            orders.add(new Sort.Order(direction, property));
                         }
 
                         if (!orders.isEmpty()) {
@@ -80,34 +89,31 @@ public class PageableConfig implements WebMvcConfigurer {
                             return PageRequest.of(page, size, Sort.by(orders));
                         }
                     }
-                } catch (Exception e) {
-                    log.warn("Failed to parse JSON array sort parameter: {}, falling back to default", sortParam, e);
+                 } catch (Exception e) {
+                     log.warn("Failed to parse JSON array sort parameter: {}, falling back to default", sortParam, e);
+                 }
                 }
             }
 
-            // Fall back to default Spring behavior
+             // Fall back to default Spring behavior
             try {
-                Pageable resolved = super.resolveArgument(methodParameter, mavContainer, webRequest, binderFactory);
+                 Pageable resolved = super.resolveArgument(methodParameter, mavContainer, webRequest, binderFactory);
 
-                // Ensure we have a valid pageable with proper defaults
-                if (resolved == null) {
-                    return PageRequest.of(0, 20, Sort.unsorted());
-                }
+                // resolved is @NonNull by contract from the superclass
+                // If sort is empty, explicitly set to unsorted
+                if (resolved.getSort().isUnsorted()) {
+                     return PageRequest.of(
+                         Math.max(0, resolved.getPageNumber()),
+                         Math.min(100, Math.max(1, resolved.getPageSize())),
+                         Sort.unsorted()
+                     );
+                 }
 
-                // If sort is null or empty, explicitly set to unsorted
-                if (resolved.getSort() == null || resolved.getSort().isUnsorted()) {
-                    return PageRequest.of(
-                        Math.max(0, resolved.getPageNumber()),
-                        Math.min(100, Math.max(1, resolved.getPageSize())),
-                        Sort.unsorted()
-                    );
-                }
-
-                return resolved;
-            } catch (Exception e) {
-                log.error("Error resolving pageable, using fallback", e);
-                return PageRequest.of(0, 20, Sort.unsorted());
-            }
-        }
-    }
-}
+                 return resolved;
+             } catch (Exception e) {
+                 log.error("Error resolving pageable, using fallback", e);
+                 return PageRequest.of(0, 20, Sort.unsorted());
+             }
+         }
+     }
+ }
