@@ -40,6 +40,13 @@ public class GeminiApiClient {
     @Value("${gemini.model:gemini-2.0-flash}")
     private String model;
 
+    @Value("${gemini.max-output-tokens:8192}")
+    private int maxOutputTokens;
+
+    // New configurable thinking budget: 0 = disabled (no thinking)
+    @Value("${gemini.thinking-budget:0}")
+    private int thinkingBudget;
+
     @Value("${gemini.timeout.seconds:90}")
     private int timeoutSeconds;
 
@@ -170,25 +177,43 @@ public class GeminiApiClient {
         // Escape prompt for JSON
         String escapedPrompt = escapeJson(prompt);
 
+        // Include thinkingConfig only when thinkingBudget != 0
+        String thinkingConfig = "";
+        if (thinkingBudget != 0) {
+            thinkingConfig = String.format("\n              \"thinkingConfig\": {\n                \"thinkingBudget\": %d\n              },\n            ", thinkingBudget);
+        }
+
         return String.format("""
                 {
                   "contents": [{
                     "parts": [{"text": "%s"}]
                   }],
-                  "generationConfig": {
+                  "generationConfig": {%s
                     "temperature": 0.2,
-                    "maxOutputTokens": 2048,
+                    "maxOutputTokens": %d,
                     "topP": 0.95,
                     "topK": 40
                   },
                   "safetySettings": [
+                    {
+                      "category": "HARM_CATEGORY_HARASSMENT",
+                      "threshold": "BLOCK_NONE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_HATE_SPEECH",
+                      "threshold": "BLOCK_NONE"
+                    },
+                    {
+                      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                      "threshold": "BLOCK_NONE"
+                    },
                     {
                       "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
                       "threshold": "BLOCK_NONE"
                     }
                   ]
                 }
-                """, escapedPrompt);
+                """, escapedPrompt, thinkingConfig, maxOutputTokens);
     }
 
     private String extractTextFromGeminiResponse(String response) {
@@ -200,19 +225,37 @@ public class GeminiApiClient {
             // Parse JSON structure: response.candidates[0].content.parts[0].text
             JsonNode root = objectMapper.readTree(response);
 
+            // Log full response for debugging
+            log.debug("Full Gemini response: {}", response);
+
             JsonNode candidates = root.path("candidates");
             if (candidates.isEmpty()) {
-                log.error("No candidates in Gemini response");
+                log.error("No candidates in Gemini response. Full response: {}", response);
                 throw new GeminiApiException("No candidates in response");
             }
 
             JsonNode firstCandidate = candidates.get(0);
+
+            // Check finishReason for safety blocks
+            String finishReason = firstCandidate.path("finishReason").asText("");
+            if (!finishReason.isEmpty() && !finishReason.equals("STOP")) {
+                log.error("Gemini blocked content. finishReason: {}, Full response: {}", finishReason, response);
+
+                // Check for safety ratings
+                JsonNode safetyRatings = firstCandidate.path("safetyRatings");
+                if (!safetyRatings.isEmpty()) {
+                    log.error("Safety ratings: {}", safetyRatings);
+                }
+
+                throw new GeminiApiException("Content blocked by Gemini safety filters. Reason: " + finishReason);
+            }
+
             JsonNode content = firstCandidate.path("content");
             JsonNode parts = content.path("parts");
 
             if (parts.isEmpty()) {
-                log.error("No parts in Gemini response");
-                throw new GeminiApiException("No parts in response");
+                log.error("No parts in Gemini response. finishReason: {}, Full response: {}", finishReason, response);
+                throw new GeminiApiException("No parts in response. FinishReason: " + finishReason);
             }
 
             String text = parts.get(0).path("text").asText();

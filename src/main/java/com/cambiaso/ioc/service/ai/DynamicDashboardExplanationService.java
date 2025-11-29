@@ -55,6 +55,13 @@ public class DynamicDashboardExplanationService {
 
                 log.info("Processing card ID: {}, Name: {}, Display: {}", cardId, cardName, display);
 
+                // Skip cards with invalid IDs (0 or negative)
+                // These are typically text elements, headings, or visual separators
+                if (cardId <= 0) {
+                    log.info("Skipping card with invalid ID: {} ({})", cardId, cardName);
+                    continue;
+                }
+
                 // Skip text cards or non-data cards if necessary
                 if ("text".equals(display)) {
                     log.info("Skipping text card: {}", cardName);
@@ -145,8 +152,7 @@ public class DynamicDashboardExplanationService {
             if (startIndex != -1 && endIndex != -1 && startIndex < endIndex) {
                 jsonText = jsonText.substring(startIndex, endIndex + 1);
             } else {
-                // Fallback: try to clean markdown if indices not found (unlikely if valid JSON
-                // exists)
+                // Fallback: try to clean markdown if indices not found
                 if (jsonText.contains("```json")) {
                     jsonText = jsonText.substring(jsonText.indexOf("```json") + 7);
                     if (jsonText.contains("```")) {
@@ -154,6 +160,11 @@ public class DynamicDashboardExplanationService {
                     }
                 }
             }
+
+            // Clean common JSON formatting issues from Gemini
+            jsonText = cleanGeminiJsonErrors(jsonText);
+
+            log.debug("Cleaned JSON for parsing: {}", jsonText);
 
             GeminiJsonResponse response = objectMapper.readValue(jsonText, GeminiJsonResponse.class);
 
@@ -172,7 +183,7 @@ public class DynamicDashboardExplanationService {
                     0, // tokens unknown
                     300);
         } catch (Exception e) {
-            log.error("Failed to parse AI response", e);
+            log.error("Failed to parse AI response. Raw text: {}", jsonText, e);
             return new DashboardExplanationResponse(
                     "Error parsing AI response",
                     List.of(),
@@ -189,4 +200,25 @@ public class DynamicDashboardExplanationService {
                     300);
         }
     }
+
+    /**
+     * Limpia errores comunes de formato JSON que Gemini puede generar.
+     */
+    private String cleanGeminiJsonErrors(String json) {
+        // Fix common array closing errors: "item"} should be "item"]
+        // Pattern: find arrays that close with } instead of ]
+        json = json.replaceAll(",\\s*\"([^\"]+)\"\\s*\\}", ",\"$1\"]");
+
+        // Fix trailing commas in arrays before closing bracket
+        json = json.replaceAll(",\\s*\\]", "]");
+
+        // Fix trailing commas in objects before closing brace
+        json = json.replaceAll(",\\s*\\}", "}");
+
+        // Remove any markdown formatting that might have slipped through
+        json = json.replace("```json", "").replace("```", "");
+
+        return json.trim();
+    }
 }
+
