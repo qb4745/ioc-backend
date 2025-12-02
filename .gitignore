@@ -22,6 +22,9 @@ target/
 # Previene que se comiteen credenciales o configuraciones locales.
 application-local.properties
 
+# Ignore local Spring Boot profile that contains secrets
+src/main/resources/application-local.properties
+
 # 6. IDE & Editor Configuration
 # STS
 .apt_generated
@@ -53,3 +56,13 @@ build/
 # Mantener el repositorio limpio en diferentes sistemas operativos.
 .DS_Store
 Thumbs.db
+
+# 8. Env
+.env
+
+# Ignore environment-specific properties files
+# /src/main/resources/application-*.properties
+
+# JaCoCo/Surefire Reports
+htmlReport/
+*.sh

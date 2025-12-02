@@ -1,0 +1,19 @@
+# render.yaml - Blueprint for deploying the IOC Backend on Render
+
+services:
+  - type: web
+    name: ioc-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: SERVER_PORT
+        value: 8080
+      - key: JAVA_OPTS
+        value: "-Xmx400m -Xms200m"
+      - fromGroup: ioc-secrets

@@ -1,0 +1,38 @@
+# Contexto de Negocio - Producción Industrial
+
+## Empresa
+- Sector: Manufactura industrial
+- Operación: 24/7 con turnos rotativos (Día/Noche/Mixto)
+- Modelo: Producción por órdenes de fabricación (OF)
+
+## Métricas Clave
+- **Unidades producidas**: Cantidad total fabricada (métrica principal)
+- **Peso neto**: Peso total de producción (kg/ton)
+- **Eficiencia**: % de cumplimiento vs plan de producción
+- **Registros**: Número de transacciones de producción
+
+## Operarios (Maquinistas)
+- Personal clave en líneas de producción
+- Identificados por código y nombre completo
+- Su desempeño impacta directamente en eficiencia
+
+## Máquinas
+- Equipos identificados por código SAP y nombre
+- Mantenimiento preventivo crítico para disponibilidad
+- Múltiples operarios pueden usar misma máquina
+
+## Turnos
+- **Día**: Horario diurno estándar
+- **Noche**: Horario nocturno
+- **Mixto**: Combinación de ambos turnos
+
+## KPIs Críticos
+- Eficiencia >90% es óptimo
+- Eficiencia 80-90% aceptable
+- Eficiencia <80% requiere acción inmediata
+- Disponibilidad de máquinas críticas >95%
+
+## Estacionalidad
+- Picos de producción: fin de mes (cierre de OFs)
+- Días hábiles: mayor producción que fines de semana
+- Primer día del mes: menor actividad (setup/planificación)
